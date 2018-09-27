@@ -46,9 +46,10 @@ Pfiles__INTERNAL_VARIABLES%     contains private variables
 %
 %
 %% Get USER preferences
-USER_PREFERENCE_Move_over_suggestions      = '';
-USER_PREFERENCE_interface_objects_fontsize = 0; 
-USER_PREFERENCE_enable_Matlab_default_menu = 0;
+USER_PREFERENCE_Move_over_suggestions                = '';
+USER_PREFERENCE_interface_objects_fontsize           = 0; 
+USER_PREFERENCE_enable_Matlab_default_menu           = 0;
+USER_PREFERENCE_hvsr_directional_reference_system    = '';
 USER_PREFERENCES
 %
 %
@@ -91,7 +92,7 @@ REFERENCE_MODEL_zpoints  = [];
 %litotypes = {};       %% Future evolutions
 %run('Litotypes.m')    %% Future evolutions
 %% xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-%%
+
 %% MAIN GUI ===============================================================
 %% BUILD INTERFACE COMPONENTS
 %% MENUS
@@ -112,6 +113,7 @@ uimenu(H.menu.files.a,'Label','Export as OpenHVSR project','Callback',{@Menu_exp
 %%    Settings
 H.menu.settings.a  = uimenu(H.gui,'Label','Settings');
 H.menu.settings.log = uimenu(H.menu.settings.a,'Label','Enable log','Checked','off','Callback',{@CB_GUI_MENU_change_checked_status});
+H.menu.settings.compass = uimenu(H.menu.settings.a,'Label','Use compass mode for degrees','Checked','off','Callback',{@Menu_Settings_use_compass_mode_Callback});
 %%    View
 H.menu.view.a  = uimenu(H.gui,'Label','View');
 %%       Tab:main
@@ -1472,7 +1474,12 @@ if strcmp(USER_PREFERENCE_Move_over_suggestions,'on')
     set(T4_2D_Prf_2,'TooltipString','Show the average E/V in the profile.')
     set(T4_2D_Prf_3,'TooltipString','Show the average N/V in the profile.')
 end
-% 
+%
+row = row+1;
+T4_2D_RapMetr_0 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','text','parent',H.PANELS{P.tab_id}.A, ...
+    'String','====== Representative Metric ======', ...
+    'Units','normalized','Position',[objx(1), objy(row), objw(1), objh]);
+%
 % 
 %  
 %%hP3_TA_buttongroup.Visible = 'on';
@@ -1895,6 +1902,10 @@ ISBUSY6 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style
 colormap('Jet')
 spunta(H.menu.view2d_Profile_smoothing_childs, P.profile.smoothing_strategy);
 spunta(H.menu.view2d_Profile_normalization_childs, P.profile.normalization_strategy);
+%%    Default degree visualization
+if(strcmp(USER_PREFERENCE_hvsr_directional_reference_system,'compass'))
+    set(H.menu.settings.compass,'Checked','on');
+end
 %
 %% Publish GUI and set history
 working_folder = '';
@@ -2005,7 +2016,7 @@ fprintf('[READY !]\n');
                 logfolder = strcat(working_folder,'logs');
                 if(~exist(logfolder,'dir'))% create log folder
                     logfolder_exist = mkdir(logfolder);% 1 yes /0
-                    if(logfolder_exist==1);
+                    if(logfolder_exist==1)
                         fprintf('log folder created.\n');
                     else
                         fprintf('log folder creation failed.\n');
@@ -2142,7 +2153,7 @@ fprintf('[READY !]\n');
                         % >>>  er = DTB{ff,1}.hvsr.error;% relative error
                         er = DTB{ff,1}.hvsr.standard_deviation;% standard deviation
                         %
-                        dd = [fr, hv, er]; %#ok
+                        dd = [fr, hv, er]; 
                         save(fname,'dd','-ascii');
                         %
                         %
@@ -2173,7 +2184,7 @@ fprintf('[READY !]\n');
                         if dH<0.2; dH=0.2; end
                             
                         DUMMY_SUBSURFACE = TEMP_SUBSURFACE;% HH
-                        DUMMY_SUBSURFACE(1:Nlays, 4) = dH*ones(Nlays,1);%#ok
+                        DUMMY_SUBSURFACE(1:Nlays, 4) = dH*ones(Nlays,1);
                         %
                         [~,s,~]=fileparts(SURVEYS{ir,2});
                         % model
@@ -2241,18 +2252,16 @@ fprintf('[READY !]\n');
         %
         %% save hvsr curves on file (in HV subfolder)
         subfolder = strcat(folder_name,'/HV');
-        if exist(subfolder,'dir') == 0; 
+        if exist(subfolder,'dir') == 0 
             mkdir(subfolder)
         end
         save_hvsr_on_ascii(subfolder); 
         %% A property as function of xy (3 column files).
         subfolder = strcat(folder_name,'/As_function_of_XY');
-        if exist(subfolder,'dir') == 0; 
+        if exist(subfolder,'dir') == 0 
             mkdir(subfolder)
         end
         save_xy_property_on_ascii(subfolder)
-        
-        %>> warning('SAM: Still to complete')
     end
 %%        Elaboration
     function Menu_Save_elaboration(~,~,~)
@@ -2284,9 +2293,11 @@ fprintf('[READY !]\n');
             NN = size(SURVEYS,1);
             sNN = num2str(NN);
             for ii=1:NN
+                fprintf('Save %d/%d',ii,NN) 
                 datname = strcat(thispath,name,'_database_',num2str(ii),'of',sNN,'.mat');
-                databas = DTB{ii,1};%#ok
+                databas = DTB{ii,1};
                 save(datname, 'databas');
+                fprintf('..OK\n')
             end
             is_done();
             fprintf('[Elaboration saved]\n')
@@ -2326,6 +2337,7 @@ fprintf('[READY !]\n');
             sNN = num2str(NN);
             DTB = cell(NN,1);
             for ix=1:NN
+               fprintf('Loading measure %d/%d',ix,NN) 
                datname = strcat(thispath,name,'_database_',num2str(ix),'of',sNN,'.mat');
                loaded = load(datname);
                DTB{ix,1}.status               = loaded.databas.status;
@@ -2336,6 +2348,7 @@ fprintf('[READY !]\n');
                DTB{ix,1}.hvsr                 = loaded.databas.hvsr;
                DTB{ix,1}.hvsr180              = loaded.databas.hvsr180;
                DTB{ix,1}.well                 = loaded.databas.well;
+               fprintf('..OK\n')
             end
             %% ========================================================================
             %% Update Interface
@@ -2360,6 +2373,18 @@ fprintf('[READY !]\n');
             %%
             fprintf('[Elaboration resumed Correctly]\n')
             is_done();
+        end
+    end
+%%      Settings
+    function Menu_Settings_use_compass_mode_Callback(hObject,~,~)
+        val = get(hObject,'Checked');
+        if strcmp(val,'off')
+            set(hObject,'Checked','on');
+            USER_PREFERENCE_hvsr_directional_reference_system= 'compass';
+        end
+        if strcmp(val,'on')
+            set(hObject,'Checked','off');
+            USER_PREFERENCE_hvsr_directional_reference_system= '';
         end
     end
 %%      View
@@ -3017,7 +3042,7 @@ fprintf('[READY !]\n');
             case 5; P.TAB_Computations.hori_axis_limits__frequence = [];% hv curve
             case 6; P.TAB_Computations.hori_axis_limits__frequence = [];% hv curve 
             case 7; P.TAB_Computations.hori_axis_limits__angles  = [];% hv 180
-            case 8; 
+            case 8 
                 P.TAB_Computations.hori_axis_limits__angles  = [];% hv 180
                 P.TAB_Computations.hori_axis_limits__angleshv= [];% all hv
             otherwise; warning('SAM: Graphic_update_spectrums: mode unespected. NO ACTION PERFORMED');
@@ -3108,7 +3133,7 @@ fprintf('[READY !]\n');
             case 5; P.TAB_Computations.vert_axis_limits__frequence = [];% hv curve
             case 6; P.TAB_Computations.vert_axis_limits__frequence = [];% hv curve 
             case 7; P.TAB_Computations.vert_axis_limits__angles  = [];% hv 180
-            case 8; 
+            case 8
                 P.TAB_Computations.vert_axis_limits__angles  = [];% hv 180
                 P.TAB_Computations.vert_axis_limits__angleshv= [];% all hv
             otherwise; warning('SAM: Graphic_update_spectrums: mode unespected. NO ACTION PERFORMED');
@@ -3817,7 +3842,7 @@ fprintf('[READY !]\n');
             tempfmin = 1e30;
             for s=1:Ndat%investigate all surveys
                 temp=DTB{s,1}.section.Min_Freq;
-                if ~isempty(temp); 
+                if ~isempty(temp)
                     if temp<tempfmin
                         tempfmin = temp;
                     end
@@ -3826,7 +3851,7 @@ fprintf('[READY !]\n');
             tempfmax = -1e30;
             for s=1:Ndat%investigate all surveys
                 temp=DTB{s,1}.section.Max_Freq;
-                if ~isempty(temp); 
+                if ~isempty(temp)
                     if temp>tempfmax
                         tempfmax = temp;
                     end
@@ -3995,7 +4020,6 @@ fprintf('[READY !]\n');
         end
     end
     function Update_IBSeW_statistics()
-        
         clc
         % get known bedrock and corresponding F0
         Nhv = size(DTB,1);
@@ -4021,7 +4045,7 @@ fprintf('[READY !]\n');
             DTB{d,1}.well.bedrock_depth__PAROLAI2002 = DTB{d,1}.well.bedrock_depth__KNOWN;
             DTB{d,1}.well.bedrock_depth__HINZEN2004  = DTB{d,1}.well.bedrock_depth__KNOWN;
             % ---------------
-            if DTB{d,1}.status ~= 2;% is excluded: ie will not partecipate i H-F0 pairs
+            if DTB{d,1}.status ~= 2% is excluded: ie will not partecipate i H-F0 pairs
                 used_hv = used_hv +1;
                 if  con1% F0 exist
                     if  (con2 || con3)
@@ -4215,7 +4239,7 @@ fprintf('[READY !]\n');
 %                 mins(3), maxs(3), ...
 %                 ];% xmin, xmax, ymin, ymax
         ddd=min([(maxs(1)-mins(1)), (maxs(2)-mins(2))])/10;
-        reference_system = [mins(1),mins(2),ddd];%#ok
+        reference_system = [mins(1),mins(2),ddd];
         %
         %         % reciprocal weighted distances
         %         r_reciprocicity = zeros(Np);
@@ -4241,7 +4265,7 @@ fprintf('[READY !]\n');
         %
         %%   DTB{s,1}.status
         %%   DTB{}.wndows.
-        T_wndows.width_sec = NaN;
+        T_wndows.width_sec = NaN;%#ok
         T_windows.number = 0;% filled runtime
         T_windows.number_fft=-1;% filled runtime,   accounts for change of windows
         T_windows.indexes = [];% filled runtime
@@ -4627,7 +4651,7 @@ fprintf('[READY !]\n');
         clc
         [xmi,xma] = getxrange();
         fprintf('Freq. range selected [%f][%f]\n',xmi,xma)
-        if xmi==xma; 
+        if xmi==xma
             fprintf('Peak unsuccessful.\n')
             return; 
         end
@@ -4865,7 +4889,7 @@ fprintf('[READY !]\n');
             
             
             %
-            switch DTB{P.isshown.id,1}.elab_parameters.data_to_use;% [1]STA/LTA [2]spectral ratios
+            switch DTB{P.isshown.id,1}.elab_parameters.data_to_use% [1]STA/LTA [2]spectral ratios
                 case 2% use filtered data in H/V
                      set(T2_PA_dattoUSE,'Value',2);% filtered
                 otherwise
@@ -6106,7 +6130,7 @@ fprintf('[READY !]\n');
     function Graphic_update_hvsr_180_windows(newfigure)%7           Directional image
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be setted
+        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be already set
         if DTB{P.isshown.id,1}.hvsr180.angle_id==1; return; end 
         %
         df = DTB{ii,1}.section.Frequency_Vector(3);
@@ -6128,12 +6152,29 @@ fprintf('[READY !]\n');
             cla(h_ax(3));
         end
         th = DTB{P.isshown.id,1}.hvsr180.angle_step;
-        angles = 0:th:180;
         DD = DTB{P.isshown.id,1}.hvsr180.spectralratio;
         DD = [DD, DD(:,1)];
         mi = min(min(DD)); 
         ma = max(max(DD));
-        %% AXES 1: PLAIN VIEW
+        maxn = max(DTB{P.isshown.id,1}.hvsr.curve);      
+        tcrv = 135*(DTB{P.isshown.id,1}.hvsr.curve./maxn);
+        tcry =(0*tcrv + 135/maxn); 
+        fpeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
+        fpeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence;% user selection is always preferred
+        
+        switch USER_PREFERENCE_hvsr_directional_reference_system
+            case 'compass'
+                angles = 90:-th:-90;
+                angles_span = [-90,90];
+                tcrv = tcrv-90;
+                tcry = tcry-90; 
+            otherwise
+                angles = 0:th:180;
+                angles_span = [0,180];
+                % tcrv is Ok
+                % tcry is Ok
+        end
+       %% AXES 1: PLAIN VIEW
         set(hgui,'CurrentAxes',h_ax(1));
         if P.Flags.SpectrumAxisMode == 0
             surf(h_ax(1),angles,Fvec,DD,'EdgeColor','none')
@@ -6144,36 +6185,34 @@ fprintf('[READY !]\n');
             image(angles,Fvec,DD, 'CDataMapping','scaled')
         end
         hold(h_ax(1),'on');
-        maxn = max(DTB{P.isshown.id,1}.hvsr.curve);
-        tcrv = 135*(DTB{P.isshown.id,1}.hvsr.curve./maxn);
-        ii = P.isshown.id;
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
         plot(h_ax(1),tcrv,Fvec,'w','linewidth',2)
-        plot(h_ax(1),(0*tcrv + 135/maxn),Fvec,'w','linewidth',1)
+        plot(h_ax(1),tcry,Fvec,'w','linewidth',1)
         %
-        if experimental_directionality==1
-            prd = DTB{P.isshown.id,1}.hvsr180.preferred_direction;
+         if experimental_directionality==1
+            prd = DTB{P.isshown.id,1}.hvsr180.preferred_direction;%  expressed in E=0 N=90
+            if(strcmp(USER_PREFERENCE_hvsr_directional_reference_system,'compass'))
+                % transform from theta in [E=0 N=90 W=180] to theta2 in [W=-90 N=0 E=90]:  theta2 = 90-theta  
+                prd = -prd+90;
+            end
             if ~isempty(prd)
                 dag = delta_angle_allowed/2;
                 for ff = 1:size(prd,1)
                     dangle = abs(prd(ff,4)-prd(ff,8));% angle difference (90 deg ??)
                     if dangle > 90+dag; continue; end
                     if dangle < 90-dag; continue; end
+                    
                     plot(h_ax(1),prd(ff,4),Fvec(ff),'ok','MarkerFaceColor','k')
                 end    
             end 
         end
-        %
-        fpeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
-        fpeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence;% user selection is always preferred
+       %
         if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
-            plot(h_ax(1), [0,180],[1,1]*fpeak_user,'w','linewidth',P.info__curve_thickness)
-            text(0,fpeak_user,'User','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
+            plot(h_ax(1), angles_span,[1,1]*fpeak_user,'w','linewidth',P.info__curve_thickness)
+            text(angles_span(1),fpeak_user,'User','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
         end
         if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
-            plot(h_ax(1), [0,180],[1,1]*fpeak_auto,'w','linewidth',P.info__curve_thickness)
-            text(0,fpeak_auto,'Auto','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
+            plot(h_ax(1), angles_span,[1,1]*fpeak_auto,'w','linewidth',P.info__curve_thickness)
+            text(angles_span(1),fpeak_auto,'Auto','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
         end  
         %       
         % color-axis
@@ -6189,10 +6228,15 @@ fprintf('[READY !]\n');
         end
         % more
         colorbar
-        xlabel(sprintf('Angle (Deg)\nHVSR-Directional'),'fontweight','bold')
+        switch USER_PREFERENCE_hvsr_directional_reference_system
+            case 'compass'
+                xlabel(sprintf('Angle (Deg.) N=0, E=90\nHVSR-Directional'),'fontweight','bold')
+            otherwise
+                xlabel(sprintf('Angle (Deg.) N=90, E=0\nHVSR-Directional'),'fontweight','bold')
+        end
         ylabel('Frequency (Hz)','fontweight','bold')
         %
-        %% AXES 2: NORM-FREQUENCE
+       %% AXES 2: NORM-FREQUENCE
         set(hgui,'CurrentAxes',h_ax(2));
         hold(h_ax(3),'off');
         DD2 =  rowwise_norm(DD);
@@ -6208,17 +6252,17 @@ fprintf('[READY !]\n');
         plot(h_ax(2),tcrv,Fvec,'w','linewidth',2)
         plot(h_ax(2),(0*tcrv + 135/maxn),Fvec,'w','linewidth',1)
         if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
-            plot(h_ax(2), [0,180],[1,1]*fpeak_user,'g','linewidth',1)
+            plot(h_ax(2), angles_span,[1,1]*fpeak_user,'w','linewidth',1)
         end
         if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
-            plot(h_ax(2), [0,180],[1,1]*fpeak_auto,'w','linewidth',1)
+            plot(h_ax(2), angles_span,[1,1]*fpeak_auto,'w','linewidth',1)
         end 
         %
         colorbar 
         xlabel(sprintf('Angle (Deg)\nHVSR-Dir. Norm. by Frequency'),'fontweight','bold')
         ylabel('Frequency (Hz)','fontweight','bold')
         %
-        %% AXES 3: NORM-ANGLE
+       %% AXES 3: NORM-ANGLE
         set(hgui,'CurrentAxes',h_ax(3));
         hold(h_ax(3),'off');
         DD2 =  columnwise_norm(DD);
@@ -6232,16 +6276,15 @@ fprintf('[READY !]\n');
         end
         hold(h_ax(3),'on');
         plot(h_ax(3),tcrv,Fvec,'w','linewidth',2)
-        plot(h_ax(3),(0*tcrv + 135/maxn),Fvec,'w','linewidth',1)
+        plot(h_ax(3),tcry,Fvec,'w','linewidth',1)
         if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
-            plot(h_ax(3), [0,180],[1,1]*fpeak_user,'g','linewidth',1)
+            plot(h_ax(3), angles_span,[1,1]*fpeak_user,'w','linewidth',1)
         end
         if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
-            plot(h_ax(3), [0,180],[1,1]*fpeak_auto,'w','linewidth',1)
+            plot(h_ax(3), angles_span,[1,1]*fpeak_auto,'w','linewidth',1)
         end 
         %
         colorbar
-        %title('HVSR-Dir. (Angle. Norm)')
         xlabel(sprintf('Angle (Deg)\nHVSR-Dir. Norm. by Angle'),'fontweight','bold')
         ylabel('Frequency (Hz)','fontweight','bold')
 
@@ -6287,12 +6330,31 @@ fprintf('[READY !]\n');
             cla(h_ax(3));
         end
         th = DTB{P.isshown.id,1}.hvsr180.angle_step;
-        angles = 0:th:180;
+        %angles = 0:th:180;
         DD = DTB{P.isshown.id,1}.hvsr180.spectralratio;
         DD = [DD, DD(:,1)];
         mi = min(min(DD)); 
         ma = max(max(DD));
         %
+        maxn = max(DTB{P.isshown.id,1}.hvsr.curve);      
+        tcrv = 135*(DTB{P.isshown.id,1}.hvsr.curve./maxn);
+        tcry =(0*tcrv + 135/maxn); 
+        fpeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
+        fpeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence;% user selection is always preferred
+        
+         switch USER_PREFERENCE_hvsr_directional_reference_system
+            case 'compass'
+                angles = 90:-th:-90;
+                angles_span = [-90,90];
+                tcrv = tcrv-90;
+                tcry = tcry-90; 
+                DD=fliplr(DD);
+            otherwise
+                angles = 0:th:180;
+                angles_span = [0,180];
+                % tcrv is Ok
+                % tcry is Ok
+        end
         %% AXIS (1) PLAIN VIEW
         set(hgui,'CurrentAxes',h_ax(1));
         if P.Flags.SpectrumAxisMode == 0
@@ -6304,22 +6366,18 @@ fprintf('[READY !]\n');
             image(angles,Fvec,DD, 'CDataMapping','scaled')
         end
         hold(h_ax(1),'on');
-        maxn = max(DTB{P.isshown.id,1}.hvsr.curve);
-        tcrv = 135*(DTB{P.isshown.id,1}.hvsr.curve./maxn);
-        ii = P.isshown.id;
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
         plot(h_ax(1),tcrv,Fvec,'w','linewidth',2)
-        plot(h_ax(1),(0*tcrv + 135/maxn),Fvec,'w','linewidth',1)
-
-        fpeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
-        fpeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence;% user selection is always preferred
+        plot(h_ax(1),tcry,Fvec,'w','linewidth',1)
+        %
         if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
-            plot(h_ax(1), [0,180],[1,1]*fpeak_user,'g','linewidth',1)
+            plot(h_ax(1), angles_span,[1,1]*fpeak_user,'w','linewidth',P.info__curve_thickness)
+            text(angles_span(1),fpeak_user,'User','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
         end
         if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
-            plot(h_ax(1), [0,180],[1,1]*fpeak_auto,'w','linewidth',1)
+            plot(h_ax(1), angles_span,[1,1]*fpeak_auto,'w','linewidth',P.info__curve_thickness)
+            text(angles_span(1),fpeak_auto,'Auto','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
         end  
+        %       
         % color-axis
         if isempty(P.TAB_Computations.custom_caxis_directional)
             set(T3_PD_mincolor,'string',num2str(mi));  
@@ -6333,8 +6391,12 @@ fprintf('[READY !]\n');
         end
         % more
         colorbar
-        %title('HVSR-Directional')
-        xlabel(sprintf('Angle (Deg)\nHVSR-Directional'),'fontweight','bold')
+        switch USER_PREFERENCE_hvsr_directional_reference_system
+            case 'compass'
+                xlabel(sprintf('Angle (Deg.) N=0, E=90\nHVSR-Directional'),'fontweight','bold')
+            otherwise
+                xlabel(sprintf('Angle (Deg.) N=90, E=0\nHVSR-Directional'),'fontweight','bold')
+        end
         ylabel('Frequency (Hz)','fontweight','bold')
         %
         %% AXIS (2) Curves
@@ -6692,10 +6754,6 @@ fprintf('[READY !]\n');
 
     end
     function Graphics_2dView_hvsr_direction_at_main_peak(newfigure)
-% %         preferred_direction(ff,1:10) = [...
-% %             ccmx(1),abs(amplimx-aver), amplimx, angledegmx, ...
-% %             ccmn(1),abs(amplimn-aver), amplimn, angledegmn, ...
-% %             frq,aver];
         if(newfigure)
             h_fig = figure('name','no name specified');
             h_ax= gca;%get(h_fig,'CurrentAxes');
@@ -6717,10 +6775,10 @@ fprintf('[READY !]\n');
         %
         Ampl   = zeros(Ndata,1);
         DirectionalPeakValues = cell(Ndata,1);
-%         MaindirectionId = zeros(Ndata,1);
         Grads = zeros(Ndata,1);
-        Df_Grads = {Ndata,1};
-        Df_Ampl = {Ndata,1};
+        Grads_span = zeros(Ndata,2);
+        Df_Grads = cell(Ndata,1);
+        Df_Ampl  = cell(Ndata,1);
         ddf =str2double( get(h_deltafmainpeak,'string') )/2;
         d=0;
         for n = 1:Ndata
@@ -6745,28 +6803,26 @@ fprintf('[READY !]\n');
                 theta = DTB{n,1}.hvsr180.angle_step;
                 angles = 0:theta:(180-theta);
                 Grads(d) = angles(MaindirectionId_i);%(d));
-                fprintf('[%d]  angle[%d]',n,Grads(d))
+                % fprintf('[%d]  angle[%d]',n,Grads(d))
                 %
                 % around main peak (to be sure that not much variability is present)
                 % as of 20180719 ddf is defined as percentage
                 if ddf >0
-                    
+                    offseti = DTB{n,1}.section.Frequency_Vector(1);
                     odf = DTB{n,1}.section.Frequency_Vector(3); 
-                    %ni = ceil(ddf/odf);                                   20180719
-                    %istr = (PeakId-ni); if istr<1; istr=1; end            20180719
-                    %istp = (PeakId+ni); if istp>PeakId; istp=PeakId; end  20180719
-                    ni1 = ceil( (PeakFr*(1-ddf/100))/odf );%               20180719
-                    ni2 = fix(  (PeakFr*(1+ddf/100))/odf );%               20180719
+                    ni1 = ceil( (PeakFr*(1-ddf/100))/odf )   -offseti ;%               20180719
+                    ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%               20180719
                     istr = ni1; if istr<1; istr=1; end
                     istp = ni2; if istp>size(DTB{n,1}.hvsr180.preferred_direction,1); istp=PeakId; end
-                    fprintf('   Range[%3.2f][%3.2f]',ni1*odf,ni2*odf);
-
+                    %
+                    fprintf(' Frequency ids Min/Peak/Max  [%d   %d   %d] \n', ni1,  PeakId, ni2);
+                    %fprintf(' Frequency  Range[%3.2f][%3.2f]   Peak at [%3.2f]\n',ni1*odf,ni2*odf, PeakFr);
+                    %
                     ids =  istr:istp;
                     directs = DTB{n,1}.hvsr180.preferred_direction(ids,1);
                     Df_Grads{d,1} = angles(directs);
                     Df_Ampl{d,1}  = DTB{n,1}.hvsr180.preferred_direction(ids,2);
                 end 
-                fprintf('\n')
             end
         end
         if d>2
@@ -6793,10 +6849,10 @@ fprintf('[READY !]\n');
                 df_yproj_me = zeros(Nactive,1);
                 df_yproj_ma = zeros(Nactive,1);
                 for d = 1:Nactive
-                    %d = active_stations(n);
+                    %n = active_stations(d);
                     mim = min(Df_Grads{d,1});
                     [~,imim]= find(Df_Grads{d,1}==mim);
-                    Ami = max(Df_Ampl{d,1}(imim,1));
+                    Ami = min(Df_Ampl{d,1}(imim,1));
                     %
                     mam = max(Df_Grads{d,1});
                     [~,imam]= find(Df_Grads{d,1}==mam);
@@ -6804,11 +6860,9 @@ fprintf('[READY !]\n');
                     %
                     mem = (mim+mam)/2;
                     df_rad = [mim; mem; mam]*pi/180;%   rr=gg*pi/180
-                    %[rr,imem]= find(Df_Grads{d,1}==mem);
+                    
                     Ame = (Ama+Ami)/2;
-    %                 df_xproj = Ampl(d)*sin(df_rad);%  scalearrows*Dxy  ;
-    %                 df_yproj = Ampl(d)*cos(df_rad);
-                    df_xproj = cos(df_rad);%  scalearrows*Dxy  ;
+                    df_xproj = cos(df_rad);
                     df_yproj = sin(df_rad);
                     %
                     df_xproj_mi(d) = Ami*df_xproj(1);
@@ -6818,6 +6872,11 @@ fprintf('[READY !]\n');
                     df_yproj_mi(d) = Ami*df_yproj(1);
                     df_yproj_me(d) = Ame*df_yproj(2);
                     df_yproj_ma(d) = Ama*df_yproj(3);
+                    %
+                    Grads_span(d,1) = mim;
+                    Grads_span(d,2) = mam;
+                    %
+                    fprintf(' Angles:  Min[%3.2f]    Peak[%3.2f]    Max[%3.2f]\n',Grads_span(d,1), Grads(d), Grads_span(d,2));
                 end
                 quiver(Xscatt,Yscatt, df_xproj_mi,df_yproj_mi, scalearrows,'g')
                 quiver(Xscatt,Yscatt, df_xproj_me,df_yproj_me, scalearrows,'y')
@@ -6828,12 +6887,12 @@ fprintf('[READY !]\n');
             %   \  |y /(N)
             %    \ | /
             %     \|/_____x(E)
-            rads = Grads*pi/180;%   rr=gg*pi/180
-            xproj = cos(rads);%  scalearrows*Dxy  ;
-            yproj = sin(rads);
+            Rads = Grads*pi/180;%   rr=gg*pi/180
+            xproj = cos(Rads);%  scalearrows*Dxy  ;
+            yproj = sin(Rads);
             for d = 1:Nactive
-                xproj(d) = 1.1*Ampl(d)*xproj(d);
-                yproj(d) = 1.1*Ampl(d)*yproj(d);
+                xproj(d) = Ampl(d)*xproj(d);
+                yproj(d) = Ampl(d)*yproj(d);
             end
             quiver(Xscatt,Yscatt, xproj,yproj, scalearrows,'k')
             %
@@ -6865,9 +6924,16 @@ fprintf('[READY !]\n');
             end
             %
             %% angle annotation
-            if strcmp( get(H.menu.view.view2d_Angle_Annotation,'Checked'), 'on')    
+            if strcmp( get(H.menu.view.view2d_Angle_Annotation,'Checked'), 'on')   
+                 switch USER_PREFERENCE_hvsr_directional_reference_system
+                    case 'compass'
+                        Grads2 = -Grads+90;
+                    otherwise
+                        Grads2 = Grads;
+                end
+                
                 for d = 1:Nactive
-                    tst = strcat(num2str(Grads(d)), sprintf(char(176)));
+                    tst = strcat(num2str(Grads2(d)), sprintf(char(176)));
                     text(Xscatt(d),Yscatt(d), tst  );
                 end
             end
@@ -7394,7 +7460,7 @@ fprintf('[READY !]\n');
                             %d = active_stations(n);
                             mim = min(Df_Grads{d,1});
                             [~,imim]= find(Df_Grads{d,1}==mim);
-                            Ami = max(Df_Ampl{d,1}(imim,1));
+                            Ami = min(Df_Ampl{d,1}(imim,1));
                             %
                             mam = max(Df_Grads{d,1});
                             [~,imam]= find(Df_Grads{d,1}==mam);
@@ -7478,9 +7544,15 @@ fprintf('[READY !]\n');
                         end
                     end
                     %% angle annotation
-                    if strcmp( get(H.menu.view.view3d_Angle_Annotation,'Checked'), 'on')    
+                    if strcmp( get(H.menu.view.view3d_Angle_Annotation,'Checked'), 'on')
+                        switch USER_PREFERENCE_hvsr_directional_reference_system
+                            case 'compass'
+                                Grads2 = -Grads+90;
+                            otherwise
+                                Grads2 = Grads;
+                        end
                         for d = 1:size(surface_locations,1)
-                            tst = strcat(num2str(Grads(d)), sprintf(char(176)));
+                            tst = strcat(num2str(Grads2(d)), sprintf(char(176)));
                             text(surface_locations(d,1),surface_locations(d,2),surface_locations(d,3), tst  );
                         end
                     end
@@ -7646,12 +7718,12 @@ fprintf('[READY !]\n');
     end% plot_interpolated_surface
     function plots_3D_update()
         switch P.Flags.View_3D_current_mode%  Matlab: before 2014b
-            case 1;
+            case 1
                 %Graphics_3dView_plot3d(H.gui,  hAx_3DViews, P.Flags.View_3D_current_submode);
                 Graphics_3dView_plot3d(P.property_23d_to_show, 0);
-            case 2;
+            case 2
                 Graphics_plot_2d_profile(0)% H.gui,  hAx_2DViews, P.Flags.View_3D_current_submode);
-            case 3;
+            case 3
                 Graphics_3dView_quiver(0, P.Flags.View_3D_current_submode);
         end
     end
@@ -7781,7 +7853,7 @@ fprintf('[READY !]\n');
             bedrock_ids = zeros(Nhv,1);
             dd=0;
             for pp = 1:Nhv
-                if DTB{pp,1}.status ~= 2; % all literature regressions
+                if DTB{pp,1}.status ~= 2% all literature regressions
                     dd=dd+1;
                     bedrock_ids(dd)=pp; 
                 end
@@ -7957,7 +8029,7 @@ fprintf('[READY !]\n');
             
             %% PLOT stations
             for pp = 1:Nhv
-                if DTB{pp,1}.status ~= 2;
+                if DTB{pp,1}.status ~= 2
                     plot3(h_ax,SURVEYS{pp,1}(1), SURVEYS{pp,1}(2), SURVEYS{pp,1}(3),'diamondg','MarkerFaceColor','g','linewidth',1); hold(h_ax, 'on')
                 else
                     plot3(h_ax,SURVEYS{pp,1}(1), SURVEYS{pp,1}(2), SURVEYS{pp,1}(3),'diamondk','MarkerFaceColor','k','linewidth',1); hold(h_ax, 'on')
@@ -8014,22 +8086,22 @@ fprintf('[READY !]\n');
                 Graphic_update_spectrums(1)
             case 5% 2D VIEWS
                 switch P.Flags.View_2D_current_mode%  Matlab: before 2014b
-                    case P4_TA_buttongroup_option{1}; 
+                    case P4_TA_buttongroup_option{1} 
                         Graphics_2dView_hvsr_main_frequence(1);
-                    case P4_TA_buttongroup_option{2}; 
+                    case P4_TA_buttongroup_option{2} 
                         Graphics_2dView_hvsr_main_amplitude(1);
-                    case P4_TA_buttongroup_option{3}; 
+                    case P4_TA_buttongroup_option{3} 
                         Graphics_2dView_hvsr_direction_at_main_peak(1);
-                    case P4_TA_buttongroup_option{4}; 
+                    case P4_TA_buttongroup_option{4} 
                         Graphics_2dView_slice_at_specific_frequence(1);   
-                    case 'profile';
+                    case 'profile'
                         Graphics_plot_2d_profile(1);% H.gui,  hAx_2DViews, P.Flags.View_2D_current_submode);%   ABSOLUTELY FIX !!!!! 
 %                     otherwise
 %                         S2Dview_hvsr_main_frequence();%% option-1
                 end
             case 6% 3D VIEWS
                 switch P.Flags.View_3D_current_mode%  Matlab: before 2014b
-                    case 3;
+                    case 3
                         % Z=-/F0 (with or without surface)
                         % Z=-/F0 +directional-H/V (with or without surface)
                         Graphics_3dView_quiver(1, P.Flags.View_3D_current_submode);
@@ -8067,7 +8139,7 @@ fprintf('[READY !]\n');
     function spunta(handle_vector, property_value)
         % spunta for menus
         for ir = 1:length(handle_vector)
-            if ir == property_value +1;
+            if ir == property_value +1
                 set(handle_vector(ir),'Checked','on');
             else
                 set(handle_vector(ir),'Checked','off');
@@ -8295,7 +8367,7 @@ fprintf('[READY !]\n');
             idfilter = get(T2_PA_filter,'Value');% [1]off, [2]bandpass
             DTB{dat_id,1}.elab_parameters.filter_id = idfilter;
             %% decide which data to use 
-            switch get(T2_PA_dattoUSE,'Value');% [1]STA/LTA [2]spectral ratios
+            switch get(T2_PA_dattoUSE,'Value')% [1]STA/LTA [2]spectral ratios
                 case 2% use filtered data in H/V
                     DTB{dat_id,1}.elab_parameters.data_to_use = 2;% filtered
                 otherwise
@@ -8509,7 +8581,7 @@ fprintf('[READY !]\n');
         else
             [perform_fft, perform_hvsr,perform_hvsr180, skip_this] = check_operations_to_perform(dat_id);
         end
-        if skip_this==1;% abort if windowing was not performed 
+        if skip_this==1% abort if windowing was not performed 
             fprintf('MESSAGE: Windowing was not peformed on file [%d],%s\n',dat_id,SURVEYS{dat_id,2})
             return; 
         end
@@ -8561,8 +8633,7 @@ fprintf('[READY !]\n');
         perform_hvsr = 0;
         perform_hvsr180 = 0;
         skip_this = 0;
-        % DTB{dat_id,1}.alaboration_progress = 1;% windowing only performed
-        if DTB{dat_id,1}.alaboration_progress == 0; % windowing was not performed
+        if DTB{dat_id,1}.alaboration_progress == 0 % windowing was not performed
             skip_this = 1;
             return;
         end
@@ -8629,10 +8700,10 @@ fprintf('[READY !]\n');
             %fprintf('check 2-07/7: tapering has changed\n')
         end
         % padding
-        if isempty(DTB{dat_id,1}.wndows.info);
+        if isempty(DTB{dat_id,1}.wndows.info)
             perform_fft = 1;
         end
-        if DTB{dat_id,1}.wndows.info(6) == 0;% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
+        if DTB{dat_id,1}.wndows.info(6) == 0% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
             perform_fft = 1;
         end
         %
@@ -8654,7 +8725,7 @@ fprintf('[READY !]\n');
         end
         if perform_fft
             perform_hvsr = 1;
-            if angle_id==1; 
+            if angle_id==1 
                 perform_hvsr180 = 0; 
             else
                 perform_hvsr180 = 1;
@@ -8713,7 +8784,7 @@ fprintf('[READY !]\n');
         end
         %
         if perform_hvsr
-            if angle_id>1;
+            if angle_id>1
                 perform_hvsr180 = 1;
                 return;
             end
@@ -9477,7 +9548,7 @@ fprintf('[READY !]\n');
                 end% if not empty
             end
         end
-        if is_exported == 1;
+        if is_exported == 1
             fprintf('[HVSR curves Exported]\n')
         else
             fprintf('[NO HVSR CURVES TO EXPORT]\n')
@@ -9512,6 +9583,9 @@ fprintf('[READY !]\n');
                     if ~isnan(DTB{d,1}.hvsr.auto_main_peak_frequence)
                         F0(d) = DTB{d,1}.hvsr.auto_main_peak_frequence;
                         A0(d) = DTB{d,1}.hvsr.auto_main_peak_amplitude;
+                    else
+                        F0(d)=NaN;
+                        A0(d)=NaN;
                     end
                 end
             end
@@ -9561,11 +9635,10 @@ fprintf('[READY !]\n');
             DirectionalPeakValues = cell(Ndata,1);
             MaindirectionId = zeros(Ndata,1);
             Grads = zeros(Ndata,1);
-            Df_Grads = {Ndata,1};
-            Df_Ampl = {Ndata,1};
-            Df_info = {Ndata,1};
+            Df_Grads = cell(Ndata,1);
+            Df_Ampl  = cell(Ndata,1);
+            Df_info  = cell(Ndata,1);
             ddf =str2double( get(h_deltafmainpeak,'string') )/2;% as of 20180718 this value is percent (not Hz)
-            %if ddf==0; ddf=0.5; end%  20180718
             if ddf==0; ddf=10; end%    20180718
             %
             for d = 1:Ndata
@@ -9588,114 +9661,137 @@ fprintf('[READY !]\n');
                 Grads(d) = angles(MaindirectionId(d));
                 %
                 % around main peak (to be sure that not much variability is present)
-                if ddf >0
-                    odf = DTB{d,1}.section.Frequency_Vector(3); 
-                    %ni = ceil(ddf/odf);                                   20180719
-                    %istr = (PeakId-ni); if istr<1; istr=1; end            20180719
-                    %istp = (PeakId+ni); if istp>PeakId; istp=PeakId; end  20180719
-                    
-                    ni1 = ceil( (PeakFr*(1-ddf/100))/odf );%               20180719
-                    ni2 = fix(  (PeakFr*(1+ddf/100))/odf );%               20180719
-                    istr = ni1; if istr<1; istr=1; end
-                    istp = ni2; if istp>size(DTB{d,1}.hvsr180.preferred_direction,1); istp=PeakId; end
-                    fprintf('[%d]  angle[%d]   Range[%3.2f][%3.2f]',d,Grads(d) ,ni1*odf,ni2*odf);
-                    ids =  istr:istp;
-                    directs = DTB{d,1}.hvsr180.preferred_direction(ids,1);
-                    Df_Grads{d,1} = angles(directs);
-                    Df_Ampl{d,1}  = DTB{d,1}.hvsr180.preferred_direction(ids,2);
-                    Df_info{d,1}  = [PeakFr, ni1*odf,ni2*odf];
-                end
-            end
-            %% directions around peak (min, max, average)
-            if ddf>0
-                df_angle_mi = zeros(Ndata,1);
-                df_angle_ma = zeros(Ndata,1);
-                df_xproj_mi = zeros(Ndata,1);
-                df_xproj_ma = zeros(Ndata,1);
-                df_yproj_mi = zeros(Ndata,1);
-                df_yproj_ma = zeros(Ndata,1);
-                for d = 1:Ndata
-                    mim = min(Df_Grads{d,1});
-                    [~,imim]= find(Df_Grads{d,1}==mim);
-                    Ami = max(Df_Ampl{d,1}(imim,1));
-
-                    mam = max(Df_Grads{d,1});
-                    [~,imam]= find(Df_Grads{d,1}==mam);
-                    Ama = max(Df_Ampl{d,1}(imam,1));
-
-                    df_rad = [mim; mam]*pi/180;
-
-                    df_xproj = cos(df_rad);
-                    df_yproj = sin(df_rad);
-
-                    df_xproj_mi(d) = Ami*df_xproj(1);
-                    df_xproj_ma(d) = Ama*df_xproj(2);
-
-                    df_yproj_mi(d) = Ami*df_yproj(1);
-                    df_yproj_ma(d) = Ama*df_yproj(2);
-                    
-                    df_angle_mi(d) = mim;
-                    df_angle_ma(d) = mam;   
-                end
+                offseti = DTB{d,1}.section.Frequency_Vector(1);
+                odf = DTB{d,1}.section.Frequency_Vector(3); 
+                ni1 = ceil( (PeakFr*(1-ddf/100))/odf )   -offseti ;%               20180719
+                ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%               20180719
+                istr = ni1; if istr<1; istr=1; end
+                istp = ni2; if istp>size(DTB{d,1}.hvsr180.preferred_direction,1); istp=PeakId; end
                 %
-                %% main direction (write file)
-                fnameDirDf = strcat(folder_name,'/x_y_direction_in_a_frequence_interval.txt');
-                fid = fopen(fnameDirDf,'w');
-                fprintf(fid,'# %s, %s\n',P.appname,P.appversion);
-                fprintf(fid,'#\n');
-                fprintf(fid,'# Direction associated to the main peak as a function of the location.\n');
-                fprintf(fid,'# Here the maximum and minimum angles in a buffer of %f percent around\n',ddf);
-                fprintf(fid,'# the main peak are computed.\n');
-                fprintf(fid,'# The angle (a) is assumed countercklockwise increasing, starting at the X(East) axix\n');
-                fprintf(fid,'#       |y(N)      \n');
-                fprintf(fid,'#       | /        \n');
-                fprintf(fid,'#       |/a____x(E)\n');
-                fprintf(fid,'# Vector magnitude represent how much the amplitude at the computed directions\n');
-                fprintf(fid,'# is higher with respect to the peak amplitude averaged on all directions\n');
-                fprintf(fid,'#\n');
-                fprintf(fid,'# Note: default value of the frequence buffer in writing this file is 1 Hz.\n');
-                fprintf(fid,'#       User may change the buffer by changing the value "Df(%%)"\n');
-                fprintf(fid,'#       on tab "2D Views".\n');
-                fprintf(fid,'#\n');
-                fprintf(fid,'# ========= DATA COLUMNS LEGEND ==========\n');
-                fprintf(fid,'# Column 1: Location: X/East\n');
-                fprintf(fid,'# Column 2: Location Y/North\n');
-                
-                fprintf(fid,'# Column 2: Peak frequence\n');
-                fprintf(fid,'# Column 2: Minimum frequence considered\n');
-                fprintf(fid,'# Column 2: Maximum frequence considered\n');
-                
-                fprintf(fid,'# Column 3: Minimum angle\n');
-                fprintf(fid,'# Column 4: Direction at main peak (minimum angle), x-component\n');
-                fprintf(fid,'# Column 5: Direction at main peak (minimum angle), y-component\n');
-                fprintf(fid,'# Column 6: Maximum angle\n');
-                fprintf(fid,'# Column 7: Direction at main peak (maximum angle), x-component\n');
-                fprintf(fid,'# Column 8: Direction at main peak (maximum angle), y-component\n');
-                fprintf(fid,'#\n');
-                fprintf(fid,'# Note: when building this file, curve peaks selected by the user\n');
-                fprintf(fid,'#       are preferred over the automatic choice\n');
-                fprintf(fid,'#\n');
-                fprintf(fid,'# Data_Begins_After_this_line\n');
-                for rr = 1:Ndata
-                    fprintf(fid,'%f %f %3.2f %3.2f %3.2f %3.1f %f %f %3.1f %f %f\n', XY(rr,1), XY(rr,2), ...
-                        Df_info{rr}, ...
-                        df_angle_mi(rr), df_xproj_mi(rr), df_yproj_mi(rr), ...
-                        df_angle_ma(rr), df_xproj_ma(rr), df_yproj_ma(rr));
-                end
-                fclose(fid);
-                fprintf('[X-Y - min e max angular direction in a buffer around the main peak, saved]\n')
+                fprintf('[%d]  angle[%d]   Range[%3.2f][%3.2f]    with peak at:[%3.2f]\n',d,Grads(d) ,ni1*odf,ni2*odf, F0(d));
+                ids =  istr:istp;
+                directs = DTB{d,1}.hvsr180.preferred_direction(ids,1);
+                Df_Grads{d,1} = angles(directs);
+                Df_Ampl{d,1}  = DTB{d,1}.hvsr180.preferred_direction(ids,2);
+                Df_info{d,1}  = [PeakFr, ni1*odf,ni2*odf];
+
             end
+            Rads = Grads*pi/180;%   rr=gg*pi/180
+            
+            %% directions around peak (min, max, average)
+            df_angle_mi = zeros(Ndata,1);
+            df_angle_ma = zeros(Ndata,1);
+            df_xproj_mi = zeros(Ndata,1);
+            df_xproj_ma = zeros(Ndata,1);
+            df_yproj_mi = zeros(Ndata,1);
+            df_yproj_ma = zeros(Ndata,1);
+            for d = 1:Ndata
+                mim = min(Df_Grads{d,1});
+                [~,imim]= find(Df_Grads{d,1}==mim);
+                Ami = min(Df_Ampl{d,1}(imim,1));
+
+                mam = max(Df_Grads{d,1});
+                [~,imam]= find(Df_Grads{d,1}==mam);
+                Ama = max(Df_Ampl{d,1}(imam,1));
+
+                df_rad = [mim; mam]*pi/180;
+
+                df_xproj = cos(df_rad);
+                df_yproj = sin(df_rad);
+
+                df_xproj_mi(d) = Ami*df_xproj(1);
+                df_xproj_ma(d) = Ama*df_xproj(2);
+
+                df_yproj_mi(d) = Ami*df_yproj(1);
+                df_yproj_ma(d) = Ama*df_yproj(2);
+
+                df_angle_mi(d) = mim;
+                df_angle_ma(d) = mam;   
+            end
+            %
+            %% main direction (write file)
+            fnameDirDf = strcat(folder_name,'/x_y_direction_in_a_frequence_interval.txt');
+            fid = fopen(fnameDirDf,'w');
+            fprintf(fid,'# %s, %s\n',P.appname,P.appversion);
+            fprintf(fid,'#\n');
+            fprintf(fid,'# Direction associated to the main peak as a function of the location.\n');
+            fprintf(fid,'# Here the maximum and minimum angles in a buffer of %f percent around\n',ddf);
+            fprintf(fid,'# the main peak are computed.\n');
+            switch USER_PREFERENCE_hvsr_directional_reference_system
+                case 'compass'
+                    fprintf(fid,'#\n');
+                    fprintf(fid,'#  The "compass" mode is on. Output angles will be in [-90,90]\n');
+                    fprintf(fid,'#  where:\n');
+                    fprintf(fid,'#      West is -90\n');
+                    fprintf(fid,'#      North is   0\n');
+                    fprintf(fid,'#      East is  90\n');
+                    fprintf(fid,'#\n');
+                    fprintf(fid,'#   Axis are oriented as:\n');
+                    fprintf(fid,'#       |y(N)      \n');
+                    fprintf(fid,'#       | /        \n');
+                    fprintf(fid,'#       |/a____x(E)\n');
+                otherwise
+                    fprintf(fid,'# The angle (a) is assumed countercklockwise increasing, starting at the X(East) axix\n');
+                    fprintf(fid,'#       |y(N)      \n');
+                    fprintf(fid,'#       | /        \n');
+                    fprintf(fid,'#       |/a____x(E)\n');
+                    fprintf(fid,'#\n');
+                    fprintf(fid,'#      East is     0\n');
+                    fprintf(fid,'#      North is   90\n');
+                    fprintf(fid,'#      West is  180\n');
+            end
+            fprintf(fid,'# Vector magnitude represent how much the amplitude at the computed directions\n');
+            fprintf(fid,'# is higher with respect to the peak amplitude averaged on all directions\n');
+            fprintf(fid,'#\n');
+            fprintf(fid,'# Note: default value of the frequence buffer in writing this file is 1 Hz.\n');
+            fprintf(fid,'#       User may change the buffer by changing the value "Df(%%)"\n');
+            fprintf(fid,'#       on tab "2D Views".\n');
+            fprintf(fid,'#\n');
+            fprintf(fid,'# ========= DATA COLUMNS LEGEND ==========\n');
+            fprintf(fid,'# Column  1: Location: X/East\n');
+            fprintf(fid,'# Column  2: Location Y/North\n');
+
+            fprintf(fid,'# Column  3: Peak frequence\n');
+            fprintf(fid,'# Column  4: Minimum frequence considered\n');
+            fprintf(fid,'# Column  5: Maximum frequence considered\n');
+
+            fprintf(fid,'# Column  6: Minimum angle\n');
+            fprintf(fid,'# Column  7: Direction at main peak (minimum angle), x-component\n');
+            fprintf(fid,'# Column  8: Direction at main peak (minimum angle), y-component\n');
+            fprintf(fid,'# Column  9: Maximum angle\n');
+            fprintf(fid,'# Column 10: Direction at main peak (maximum angle), x-component\n');
+            fprintf(fid,'# Column 11: Direction at main peak (maximum angle), y-component\n');
+            fprintf(fid,'#\n');
+            fprintf(fid,'# Note: when building this file, curve peaks selected by the user\n');
+            fprintf(fid,'#       are preferred over the automatic choice\n');
+            fprintf(fid,'#\n');
+            fprintf(fid,'# Data_Begins_After_this_line\n');
+            if(strcmp(USER_PREFERENCE_hvsr_directional_reference_system,'compass'))
+                df_angle_mi2 = -df_angle_mi+90;
+                df_angle_ma2 = -df_angle_ma+90;
+            else
+                df_angle_mi2 = df_angle_mi;
+                df_angle_ma2 = df_angle_ma;
+            end
+            for rr = 1:Ndata
+                fprintf(fid,'%f %f %3.2f %3.2f %3.2f %3.1f %f %f %3.1f %f %f\n', XY(rr,1), XY(rr,2), ...
+                    Df_info{rr}, ...
+                    df_angle_mi2(rr), df_xproj_mi(rr), df_yproj_mi(rr), ...
+                    df_angle_ma2(rr), df_xproj_ma(rr), df_yproj_ma(rr));
+            end
+            fclose(fid);
+            fprintf('[X-Y - min e max angular direction in a buffer around the main peak, saved]\n')
+
             %% main direction (at peak)
             %arrowmaxlength = scalearrows*max([ ,  ]);
             %   \  |y /(N)
             %    \ | /
             %     \|/_____x(E)
-            rads = Grads*pi/180;%   rr=gg*pi/180
-            xproj = cos(rads);
-            yproj = sin(rads);
+            xproj = cos(Rads);
+            yproj = sin(Rads);
             for d = 1:Ndata
-                xproj(d) = 1.1*Ampl(d)*xproj(d);
-                yproj(d) = 1.1*Ampl(d)*yproj(d);
+                xproj(d) = Ampl(d)*xproj(d);
+                yproj(d) = Ampl(d)*yproj(d);
             end
             %% main direction (write file)
             fnameDir0 = strcat(folder_name,'/x_y_direction_at_main_peak.txt');
@@ -9725,6 +9821,74 @@ fprintf('[READY !]\n');
             end
             fclose(fid);
             fprintf('[X-Y - direction associated to the peak, saved]\n')
+            
+            %% angles only
+            fnameDir0 = strcat(folder_name,'/x_y_angles_around_main_peak.txt');
+            fid = fopen(fnameDir0,'w');
+            fprintf(fid,'# %s, %s\n',P.appname,P.appversion);
+            fprintf(fid,'#\n');
+            fprintf(fid,'# Direction associated to the main peak');
+            fprintf(fid,'# and minimum/maximum angles in a a frequency buffer %f percent around the peak\n',ddf);
+            fprintf(fid,'# Vector magnitude represent how much the amplitude at the preferential direction\n');
+            fprintf(fid,'# is higher with respect to the peak amplitude averaged on all directions\n');
+            switch USER_PREFERENCE_hvsr_directional_reference_system
+                case 'compass'
+                    fprintf(fid,'#\n');
+                    fprintf(fid,'#  The "compass" mode is on. Output angles will be in [-90,90]\n');
+                    fprintf(fid,'#  where angles are in degrees, and\n');
+                    fprintf(fid,'#      West is -90\n');
+                    fprintf(fid,'#      North is   0\n');
+                    fprintf(fid,'#      East is  90\n');
+                    fprintf(fid,'#\n');
+                    fprintf(fid,'#   Axis are oriented as:\n');
+                    fprintf(fid,'#       |y(N)      \n');
+                    fprintf(fid,'#       | /        \n');
+                    fprintf(fid,'#       |/a____x(E)\n');
+                otherwise
+                    fprintf(fid,'# The angle (a) is assumed countercklockwise increasing, starting at the X(East) axix\n');
+                    fprintf(fid,'#       |y(N)      \n');
+                    fprintf(fid,'#       | /        \n');
+                    fprintf(fid,'#       |/a____x(E)\n');
+                    fprintf(fid,'#\n');
+                    fprintf(fid,'#  Angles are in degrees, and\n');
+                    fprintf(fid,'#      East is     0\n');
+                    fprintf(fid,'#      North is   90\n');
+                    fprintf(fid,'#      West is  180\n');
+            end
+            fprintf(fid,'#\n');
+            fprintf(fid,'# ========= DATA COLUMNS LEGEND ==========\n');
+            fprintf(fid,'# Note: when building this file, curve peaks selected by the user\n');
+            fprintf(fid,'#       are preferred over the automatic choice\n');
+            fprintf(fid,'#\n');
+
+            fprintf(fid,'# Column 1: Angle (minimum)\n');
+            fprintf(fid,'# Column 2: Angle (at peak)\n');
+            fprintf(fid,'# Column 3: Angle (maximum)\n');
+            fprintf(fid,'# Column 4: Magnitude rappresenting neanignness\n');
+            fprintf(fid,'# Column 5: Original File name\n');
+            fprintf(fid,'#\n');
+            fprintf(fid,'#\n');
+            fprintf(fid,'# Data_Begins_After_this_line\n');
+            if(strcmp(USER_PREFERENCE_hvsr_directional_reference_system,'compass'))
+                    Grad2 = -Grads+90;
+                    df_angle_mi2 = -df_angle_mi+90;
+                    df_angle_ma2 = -df_angle_ma+90;
+                    for rr = 1:Ndata
+                        fprintf(fid,'%3.1f %3.1f %3.1f %f     %s\n',df_angle_ma2(rr), Grad2(rr), df_angle_mi2(rr), Ampl(rr), SURVEYS{rr,2}  );  
+                        %fprintf('Angles %3.1f   %3.1f   %3.1f   %f     %s\n', df_angle_ma2(rr), Grad2(rr), df_angle_mi2(rr), Ampl(rr), SURVEYS{rr,2}  );  
+                    end
+            else
+                    Grad2 = Grads;
+                    df_angle_mi2 = df_angle_mi;
+                    df_angle_ma2 = df_angle_ma;
+                    for rr = 1:Ndata
+                        fprintf(fid,'%3.1f %3.1f %3.1f %f     %s\n',df_angle_mi2(rr), Grad2(rr), df_angle_ma2(rr), Ampl(rr), SURVEYS{rr,2}  );  
+                        %fprintf('Angles %3.1f   %3.1f   %3.1f   %f     %s\n', df_angle_mi2(rr), Grad2(rr), df_angle_ma2(rr), Ampl(rr), SURVEYS{rr,2}  );  
+                    end
+            end
+            fclose(fid);
+            fprintf('[Angles around the peak, saved]\n')
+        
         end
         
         

@@ -19,7 +19,8 @@ USER_PREFERENCE_interface_objects_fontsize       = 12;% size in points
 USER_PREFERENCE_enable_Matlab_default_menu       = 0;% [0=off/ 1=on]
 % 
 %
-% 
-% 
+%%    Reference System (on interface)
+USER_PREFERENCE_hvsr_directional_reference_system= 'compass';% [ 'default': 0°is East; 180°is West] [ 'compas'  -90°is West; 90°is East]
+%                    
 % 
 % 
