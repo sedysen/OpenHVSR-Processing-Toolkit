@@ -6950,7 +6950,13 @@ fprintf('[READY !]\n');
             ylim([min(Yscatt)-mu*Dyy,  max(Yscatt)+mu*Dyy]);
             %% PROPORTIONED
             daspect(h_ax, P.data_aspectis_aerialmap)
-            xlabel(h_ax,'X (E/W)','fontweight','bold')
+            %xlabel(h_ax,'X (E/W)','fontweight','bold')
+            switch USER_PREFERENCE_hvsr_directional_reference_system
+                case 'compass'
+                    xlabel(sprintf('X (E/W)\nAngle (Deg.) N=0, E=90'),'fontweight','bold')
+                otherwise
+                    xlabel(sprintf('X (E/W)\nAngle (Deg.) N=90, E=0'),'fontweight','bold')
+            end
             ylabel(h_ax,'Y (N/S)','fontweight','bold')
             %% SAMUEL LEGEND
             xxp = get(h_ax,'xlim'); ddx = xxp(2)-xxp(1);
@@ -7516,7 +7522,13 @@ fprintf('[READY !]\n');
                     zproj = 0*rads;
                     quiver3(h_ax, surface_locations(:,1),surface_locations(:,2),surface_locations(:,3), xproj(processed_ids),yproj(processed_ids),zproj(processed_ids), scalearrows,'k')
                     %
-                    xlabel(h_ax,'X (E/W)','fontweight','bold')
+                    %xlabel(h_ax,'X (E/W)','fontweight','bold')
+                    switch USER_PREFERENCE_hvsr_directional_reference_system
+                        case 'compass'
+                            xlabel(sprintf('X (E/W)\nAngle (Deg.) N=0, E=90'),'fontweight','bold')
+                        otherwise
+                            xlabel(sprintf('X (E/W)\nAngle (Deg.) N=90, E=0'),'fontweight','bold')
+                    end
                     ylabel(h_ax,'Y (N/S)','fontweight','bold')
                     zlabel(h_ax,'1/f (Sec.)','fontweight','bold')
                     drawnow
