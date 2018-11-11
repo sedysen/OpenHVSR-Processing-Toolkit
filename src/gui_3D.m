@@ -2048,7 +2048,7 @@ fprintf('[READY !]\n');
                 TOPOGRAPHY = load_topography(working_folder,TOPOGRAPHY_file_name);
             end
             %% check for the data to have the same time-scale (and uniform the data)
-            DDAT = check_for_data_uniformity();
+            check_for_data_uniformity();% this will change DDAT
             %% initializing
             INIT_tool_variables();
             %
@@ -2350,6 +2350,7 @@ fprintf('[READY !]\n');
                DTB{ix,1}.well                 = loaded.databas.well;
                fprintf('..OK\n')
             end
+             fprintf('[Elaboration loaded correctly]\n')
             %% ========================================================================
             %% Update Interface
             P.isshown.id= 1;
@@ -8229,7 +8230,7 @@ fprintf('[READY !]\n');
     end
 %% DATA ELABORATION
 %%    preliminars
-    function [NEWDAT] = check_for_data_uniformity()
+    function check_for_data_uniformity()
         % enforces:
         % same sampling frequency
         % same length (next power of 2)
@@ -8238,8 +8239,7 @@ fprintf('[READY !]\n');
         %
         %NEWDAT = DDAT;
         Ndat = size( DDAT, 1);
-        FDAT = cell( size( DDAT,1), size( DDAT,2));
-        %FS0=
+        %FDAT = cell( size( DDAT,1), size( DDAT,2));
         %% check Fs
         same_fs = 1;
         if any( abs(sampling_frequences-sampling_frequences(1))>0 )% some files have a different sampling frequency
@@ -8273,8 +8273,7 @@ fprintf('[READY !]\n');
             msgbox(msg,'Warning')
         end
         
-        %% CHANGING THE DATA:
-        TDAT=DDAT;
+        %% CHANGING THE DATA:       
         %%   adjusting Fs
         if same_fs==0
             % interpolating to max Fs
@@ -8288,7 +8287,10 @@ fprintf('[READY !]\n');
                     tend =  time(end);
                     new_ns = fix( (tend+dt)/mindt );
                     new_time=mindt*( 0:(new_ns-1) ).';
-                    for c=1:3; TDAT{s,c} = spline(time,DDAT{s,c},new_time); end
+                    for c=1:3
+                        tdat = spline(time,DDAT{s,c},new_time);
+                        DDAT{s,c} = tdat; 
+                    end
                     sampling_frequences(s) = maxfs;
                 end
             end
@@ -8307,7 +8309,6 @@ fprintf('[READY !]\n');
         %             end
         %             %
         %             NEWDAT = T2DAT;
-        NEWDAT=TDAT;
     end
 
 %    SINGLE DATA
@@ -8945,7 +8946,7 @@ fprintf('[READY !]\n');
             %
             %
             DTB{dat_id,1}.hvsr.EV_all_windows = EV;
-            DTB{dat_id,1}.hvsr.EV_all_windows = NV;
+            DTB{dat_id,1}.hvsr.NV_all_windows = NV;
             DTB{dat_id,1}.hvsr.HV_all_windows = HV;
             %
             %% update DTB-II
