@@ -1,5 +1,5 @@
 # OpenHVSR Processing Toolkit (OpenHVSR-ProTO)
-"OpenHVSR ñ Processing Toolkitî, developed in Matlab (R2015b), is a computer program dedicated to the investigation of microtremors (seismic noise)
+"OpenHVSR ‚Äì Processing Toolkit‚Äù, developed in Matlab (R2015b), is a computer program dedicated to the investigation of microtremors (seismic noise)
 by means of the Horizontal-to-Vertical Spectral Ratio (HVSR or H/V). 
 
 It is specifically engineered to enhance single-station microtremor processing with the purpose of spatially correlating different forms of informative data content, 
@@ -10,12 +10,11 @@ Further, bedrock mapping capability, as introduced by Ibs-von Seht and Wohlenber
 a set of published regressions or by computing a customized regression based on the data at hand. 
 The program aims at implementing the most effective and desirable processing tools present in other commercial and non-commercial alternatives, 
 all in one bundle, freely available to the scientific community. 
-In ad≠dition to incorporating and enhancing currently available state of the art tools, we have integrated several original features that are not present in any other program. 
-The presented processing toolkit naturally integrates with our data inversion software, ìOpenHVSRî, published in 2016. 
+In ad¬≠dition to incorporating and enhancing currently available state of the art tools, we have integrated several original features that are not present in any other program. 
+The presented processing toolkit naturally integrates with our data inversion software, ‚ÄúOpenHVSR‚Äù, published in 2016. 
 Together, they constitute a complete workflow for the Horizontal-to-Vertical Spectral Ratio method. 
 We expect this first version to be of great use to researchers and hope it will constitute the basis for further collaborative development toward future releases 
 oriented at exploring the potentials of this technique.
-
 
 OFFICIALLY MANTAINED REPOSITORY: https://github.com/sedysen/OpenHVSR-Processing-Toolkit
 
