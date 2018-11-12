@@ -16,7 +16,6 @@ Together, they constitute a complete workflow for the Horizontal-to-Vertical Spe
 We expect this first version to be of great use to researchers and hope it will constitute the basis for further collaborative development toward future releases 
 oriented at exploring the potentials of this technique.
 
-The present release (1.0.0) is in beta version.
 
 OFFICIALLY MANTAINED REPOSITORY: https://github.com/sedysen/OpenHVSR-Processing-Toolkit
 

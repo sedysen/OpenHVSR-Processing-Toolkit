@@ -1,4 +1,6 @@
 %% Copyright 2017 by Samuel Bignardi.
+%     www.samuelbignardi.com
+%
 %
 % This file is part of the program OpenHVSR-Processing Toolkit.
 %
@@ -9,6 +11,9 @@
 %
 % OpenHVSR-Processing Toolkit is distributed in the hope that it will be useful,
 % but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
 % You should have received a copy of the GNU General Public License
 % along with OpenHVSR-Processing Toolkit.  If not, see <http://www.gnu.org/licenses/>.
 %
@@ -304,15 +309,15 @@ if ~isempty(fileformat)
         % write data on a File and read again
         % fprintf('      Data Evaluation:')
         format long g
-        DATA = char(B(First_line_of_data:size(B,1)));
-        DATA = DATA';
-        fid=fopen('DATA.mat','w');
-        for i=1:size(DATA,2)
-            fprintf(fid, '%s\n', DATA(:,i));
+        DATA = B(First_line_of_data:size(B,1));%DATA = char(B(First_line_of_data:size(B,1)));
+        %DATA = DATA';
+        fid=fopen('DATA.tmp','w');
+        for ii=1:size(DATA,1)
+            fprintf(fid, '%s\n', DATA{ii});
         end
         fclose(fid);
         clear fid DATA count2 %B
-        load DATA.mat -ascii
+        DATA = load('DATA.tmp', '-ascii');
         %% Reorder data!!
         DATA_V_XE_YN = DATA;
         if V_in_column~=1 || XE_in_column~=2 || YN_in_column~=3

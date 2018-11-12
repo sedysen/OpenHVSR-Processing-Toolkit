@@ -1,4 +1,6 @@
 %% Copyright 2017 by Samuel Bignardi.
+%     www.samuelbignardi.com
+%
 %
 % This file is part of the program OpenHVSR-Processing Toolkit.
 %
@@ -9,6 +11,9 @@
 %
 % OpenHVSR-Processing Toolkit is distributed in the hope that it will be useful,
 % but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
 % You should have received a copy of the GNU General Public License
 % along with OpenHVSR-Processing Toolkit.  If not, see <http://www.gnu.org/licenses/>.
 %
@@ -4338,8 +4343,8 @@ fprintf('[READY !]\n');
         % hvsr peaks (authomatic/user)
         T_hvsr.user_main_peak_frequence = NaN;
         T_hvsr.user_main_peak_amplitude = NaN;
-        T_hvsr.hvsr.user_main_peak_id_full_curve = NaN;
-        T_hvsr.hvsr.user_main_peak_id_in_section = NaN;
+        T_hvsr.user_main_peak_id_full_curve = NaN;
+        T_hvsr.user_main_peak_id_in_section = NaN;
         
         T_hvsr.auto_main_peak_frequence = NaN;
         T_hvsr.auto_main_peak_amplitude = NaN;
@@ -8358,8 +8363,8 @@ fprintf('[READY !]\n');
             % hvsr peaks (authomatic/user)
             DTB{dat_id,1}.hvsr.user_main_peak_frequence = NaN;
             DTB{dat_id,1}.hvsr.user_main_peak_amplitude = NaN;
-            DTB{dat_id,1}.hvsr.hvsr.user_main_peak_id_full_curve = NaN;
-            DTB{dat_id,1}.hvsr.hvsr.user_main_peak_id_in_section = NaN;
+            DTB{dat_id,1}.hvsr.user_main_peak_id_full_curve = NaN;
+            DTB{dat_id,1}.hvsr.user_main_peak_id_in_section = NaN;
 
             DTB{dat_id,1}.hvsr.auto_main_peak_frequence = NaN;
             DTB{dat_id,1}.hvsr.auto_main_peak_amplitude = NaN;

@@ -1,5 +1,6 @@
-function [H] = Pfiles__Ibs_Von_Seht_Like__HfromF(fr,a,b)
 %% Copyright 2017 by Samuel Bignardi.
+%     www.samuelbignardi.com
+%
 %
 % This file is part of the program OpenHVSR-Processing Toolkit.
 %
@@ -10,11 +11,15 @@ function [H] = Pfiles__Ibs_Von_Seht_Like__HfromF(fr,a,b)
 %
 % OpenHVSR-Processing Toolkit is distributed in the hope that it will be useful,
 % but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+%
 % You should have received a copy of the GNU General Public License
 % along with OpenHVSR-Processing Toolkit.  If not, see <http://www.gnu.org/licenses/>.
 %
 %
 %
+function [H] = Pfiles__Ibs_Von_Seht_Like__HfromF(fr,a,b)
     % Ibs-von Seht and Wolemberg - style calculation
     % Compute depth of bedrock (H) by knowing the main resonant frequency (fr) and
     % the parameters a,b of the function H = H(f)
