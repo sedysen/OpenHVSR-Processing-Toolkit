@@ -1569,11 +1569,11 @@ if strcmp(USER_PREFERENCE_Move_over_suggestions,'on')
     set(T4_2D_Prf_2,'TooltipString','Show the average E/V in the profile.')
     set(T4_2D_Prf_3,'TooltipString','Show the average N/V in the profile.')
 end
-%
-row = row+1;
-T4_2D_RapMetr_0 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','text','parent',H.PANELS{P.tab_id}.A, ...
-    'String','====== Representative Metric ======', ...
-    'Units','normalized','Position',[objx(1), objy(row), objw(1), objh]);
+% %
+% row = row+1;
+% T4_2D_RapMetr_0 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','text','parent',H.PANELS{P.tab_id}.A, ...
+%     'String','====== Representative Metric ======', ...
+%     'Units','normalized','Position',[objx(1), objy(row), objw(1), objh]);
 %
 % 
 %  
@@ -4026,7 +4026,7 @@ fprintf('[READY !]\n');
         if isempty(SURVEYS); return; end
         Np = size(receiver_locations,1);
         recta_kind = 0;
-        if Matlab_Release_num>2018.1% Solve ginput issuewith R2018a and above
+        if Matlab_Release_num>2018% Solve ginput issuewith R2018a and above
             [xx,yy] = sam2018b_ginput(2, hAx_main_geo);
         else
             [xx,yy] = ginput(2, hAx_main_geo);
