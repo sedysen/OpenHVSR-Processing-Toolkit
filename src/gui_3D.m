@@ -1,6 +1,4 @@
 %% Copyright 2017 by Samuel Bignardi.
-%     www.samuelbignardi.com
-%
 %
 % This file is part of the program OpenHVSR-Processing Toolkit.
 %
@@ -48,13 +46,15 @@ Pfiles_SET_ONOFF_FEAT%          extra features
 Pfiles_IFLAGS%                  flags deciding components behavior
 DEFAULT_VALUES%                default data-processing values
 Pfiles__INTERNAL_VARIABLES%     contains private variables
+P.appversion = 'V2.0.0';
+warning('App version forcibly changed.')
 %
 %
 %% Get USER preferences
-USER_PREFERENCE_Move_over_suggestions                = '';
-USER_PREFERENCE_interface_objects_fontsize           = 0; 
-USER_PREFERENCE_enable_Matlab_default_menu           = 0;
-USER_PREFERENCE_hvsr_directional_reference_system    = '';
+USER_PREFERENCE_Move_over_suggestions                   = '';
+USER_PREFERENCE_interface_objects_fontsize                = 0; 
+USER_PREFERENCE_enable_Matlab_default_menu          = 0;
+USER_PREFERENCE_hvsr_directional_reference_system  = '';
 USER_PREFERENCES
 %
 %
@@ -63,7 +63,7 @@ SURVEYS    = {};                                % Surveys Description [location]
 WELLS      = {};                                % drilled wells
 DDAT       = {};                                % Field Data          {a row for each data file, 3 (V, E, N) }
 FDAT       = {};                                % Filtered Field Data {a row for each data file, 3 (V, E, N) }
-TOPOGRAPHY = [];DTB = {};
+TOPOGRAPHY = [];
 TOPOGRAPHY_file_name = '';
 WLLS       = {};
 receiver_locations     = [];                   % (3D) stations locations
@@ -84,9 +84,110 @@ datafile_separator = 'none';% in data files: separator between HEADER and DDAT
 sampling_frequences = [];
 %
 %                                                                 must be smaller than this treshold.
-%% Database: DTB
-DTB = {};
+%% Database: DTB =================
+%%   DTB__status
+DTB__status = [];%                                            DTB{s,1}.status                     [N,1] vector
+DTB__elaboration_progress=[];%                      DTB{s,1}.alaboration_progress
+%%   DTB__windows
+DTB__windows__width_sec   = [];%         DTB{s,1}.windows.width_sec          [N,1] vector           
+DTB__windows__number      = [];%          DTB{s,1}.windows.number             [N,1] vector 
+DTB__windows__number_fft  = [];%         DTB{s,1}.windows.number_fft         [N,1] vector
+DTB__windows__indexes     = {};%          DTB{s,1}.windows.indexes            [element is a Nwin*2 matrix]
+DTB__windows__is_ok       = {};%            DTB{s,1}.windows.is_ok              [element is a Nwin*2 matrix]
+DTB__windows__winv        = {};%          DTB{s,1}.windows.winv               [element is a Nwin*nf matrix]                 
+DTB__windows__wine        = {};%         DTB{s,1}.windows.wine               [element is a Nwin*nf matrix]
+DTB__windows__winn        = {};%         DTB{s,1}.windows.winn               [element is a Nwin*nf matrix]
+DTB__windows__fftv        = {};%         DTB{s,1}.windows.fftv               [element is a Nwin*nf matrix]
+DTB__windows__ffte        = {};%         DTB{s,1}.windows.ffte               [element is a Nwin*nf matrix]
+DTB__windows__fftn        = {};%         DTB{s,1}.windows.fftn               [element is a Nwin*nf matrix]
+DTB__windows__info = [];%                DTB{s,1}.windows.info = [1 x 6];    [N,6] vector                   
+%%   DTB__elab_parameters        
+DTB__elab_parameters__status = {};%           DTB{s,1}.elab_parameters.status
+DTB__elab_parameters__hvsr_strategy = [];%    DTB{s,1}.elab_parameters.hvsr_strategy = get(T2_PA_HV,'Value');% picked from interface
+DTB__elab_parameters__hvsr_freq_min = [];%    DTB{s,1}.elab_parameters.hvsr_freq_min = default_values.frequence_min;
+DTB__elab_parameters__hvsr_freq_max = [];%    DTB{s,1}.elab_parameters.hvsr_freq_max = default_values.frequence_max;
+DTB__elab_parameters__windows_width = [];%    DTB{s,1}.elab_parameters.windows_width = default_values.window_width;
+DTB__elab_parameters__windows_overlap =  [];% DTB{s,1}.elab_parameters.windows_overlap = default_values.window_overlap_pc;
+DTB__elab_parameters__windows_tapering = [];% DTB{s,1}.elab_parameters.windows_tapering = default_values.tap_percent;
+DTB__elab_parameters__windows_sta_vs_lta=[];% DTB{s,1}.elab_parameters.windows_sta_vs_lta = default_values.sta_lta_ratio;
+DTB__elab_parameters__windows_pad = {};%      DTB{s,1}.elab_parameters.windows_pad = default_values.pad_length;
+DTB__elab_parameters__smoothing_strategy =[];%DTB{s,1}.elab_parameters.smoothing_strategy = get(T3_PA_wsmooth_strategy,'VAlue');
+DTB__elab_parameters__smoothing_slider_val=[];%DTB{s,1}.elab_parameters.smoothing_slider_val = get(T3_PD_smooth_slider,'Value');
+        %
+        % filter
+DTB__elab_parameters__filter_id = [];%            DTB{s,1}.elab_parameters.filter_id    = 1;
+DTB__elab_parameters__filter_name={};%            DTB{s,1}.elab_parameters.filter_name  = 'none';
+DTB__elab_parameters__filter_order=[];%           DTB{s,1}.elab_parameters.filter_order
+DTB__elab_parameters__filterFc1=[];%              DTB{s,1}.elab_parameters.filterFc1
+DTB__elab_parameters__filterFc2=[];%              DTB{s,1}.elab_parameters.filterFc2
+DTB__elab_parameters__data_to_use=[];%            DTB{s,1}.elab_parameters.data_to_use
+DTB__elab_parameters__THEfilter      ={};
+%%   DTB__section
+DTB__section__Min_Freq =[];%        DTB{s,1}.section.Min_Freq = 0.2;
+DTB__section__Max_Freq =[];%        DTB{s,1}.section.Max_Freq = 100;
+DTB__section__Frequency_Vector={};%        DTB{s,1}.section.Frequency_Vector = [];    [N*3 Matrix]
+        %
+DTB__section__V_windows ={};%        DTB{s,1}.section.V_windows = [];% filled runtime
+DTB__section__E_windows ={};%        DTB{s,1}.section.E_windows = [];% filled runtime
+DTB__section__N_windows ={};%        DTB{s,1}.section.N_windows = [];% filled runtime
+        %
+DTB__section__Average_V ={};%        DTB{s,1}.section.Average_V  = [];% filled runtime
+DTB__section__Average_E ={};%        DTB{s,1}.section.Average_E = [];% filled runtime
+DTB__section__Average_N ={};%        DTB{s,1}.section.Average_N = [];% filled runtime                    << compute_single_hv(dat_id)
+        %
+DTB__section__HV_windows ={};%       DTB{s,1}.section.HV_windows = [];% filled runtime
+DTB__section__EV_windows ={};%       DTB{s,1}.section.EV_windows = [];% filled runtime
+DTB__section__NV_windows ={};%       DTB{s,1}.section.NV_windows = [];% filled runtime
+%%   DTB__hvsr
+DTB__hvsr__curve_full ={};%              DTB{s,1}.hvsr.curve_full
+%DTB{s,1}.hvsr.error_full = [];
+DTB__hvsr__confidence95_full={};%        DTB{s,1}.hvsr.confidence95_full
+DTB__hvsr__curve_EV_full ={};%           DTB{s,1}.hvsr.curve_EV_full
+DTB__hvsr__curve_NV_full={};%            DTB{s,1}.hvsr.curve_NV_full 
 %
+DTB__hvsr__EV_all_windows={};%           DTB{s,1}.hvsr.EV_all_windows
+DTB__hvsr__NV_all_windows={};%           DTB{s,1}.hvsr.NV_all_windows
+DTB__hvsr__HV_all_windows={};%           DTB{s,1}.hvsr.HV_all_windows
+%
+DTB__hvsr__curve={};%        DTB{s,1}.hvsr.curve
+        %DTB{s,1}.hvsr.error = [];
+DTB__hvsr__confidence95={};%             DTB{s,1}.hvsr.confidence95 = [];
+DTB__hvsr__standard_deviation={};%    DTB{s,1}.hvsr.standard_deviation = [];
+DTB__hvsr__curve_EV={};%              DTB{s,1}.hvsr.curve_EV = [];
+DTB__hvsr__curve_NV={};%              DTB{s,1}.hvsr.curve_NV = [];
+        %
+DTB__hvsr__peaks_idx={};%        DTB{s,1}.hvsr.peaks_idx = [];   %index of local maxima
+DTB__hvsr__hollows_idx={};%        DTB{s,1}.hvsr.hollows_idx = [];   %index of local minima
+        %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
+        % hvsr peaks (authomatic/user)
+DTB__hvsr__user_main_peak_frequence = [];%        DTB{s,1}.hvsr.user_main_peak_frequence = NaN;
+DTB__hvsr__user_main_peak_amplitude = [];%        DTB{s,1}.hvsr.user_main_peak_amplitude = NaN;
+DTB__hvsr__user_main_peak_id_full_curve = [];%         DTB{s,1}.hvsr.hvsr.user_main_peak_id_full_curve = NaN; <<<<<< ISSUE
+DTB__hvsr__user_main_peak_id_in_section = [];%        DTB{s,1}.hvsr.hvsr.user_main_peak_id_in_section = NaN;  <<<<<< ISSUE
+DTB__hvsr__auto_main_peak_frequence= [];%        DTB{s,1}.hvsr.auto_main_peak_frequence = NaN;
+DTB__hvsr__auto_main_peak_amplitude= [];%        DTB{s,1}.hvsr.auto_main_peak_amplitude = NaN;
+DTB__hvsr__auto_main_peak_id_full_curve= [];%        DTB{s,1}.hvsr.auto_main_peak_id_full_curve= NaN;
+DTB__hvsr__auto_main_peak_id_in_section= [];%;        DTB{s,1}.hvsr.auto_main_peak_id_in_section = NaN;
+%
+%%   DTB__hvsr180
+DTB__hvsr180__angle_id = [];%        DTB{s,1}.hvsr180.angle_id = 1;% 1 = option-1 in uicontrol: off
+DTB__hvsr180__angles = {};%        DTB{s,1}.hvsr180.angles = [];
+DTB__hvsr180__angle_step = [];%        DTB{s,1}.hvsr180.angle_step = 0;
+DTB__hvsr180__spectralratio = {};%        DTB{s,1}.hvsr180.spectralratio = [];
+DTB__hvsr180__preferred_direction = {};%        DTB{s,1}.hvsr180.preferred_direction = [];
+%%   DTB__well
+DTB__well__well_id=[];%       DTB{s,1}.well.well_id   = 0;% 1 = option-1 in uicontrol: off
+DTB__well__well_name={};%        DTB{s,1}.well.well_name = '';
+DTB__well__bedrock_depth__KNOWN={};%       DTB{s,1}.well.bedrock_depth__KNOWN      = 'n.a.';% if  .well_name == ''; this depth must be computed, otherwise it is considered measured
+DTB__well__bedrock_depth_source={};%       DTB{s,1}.well.bedrock_depth_source      = 'n.a.';
+DTB__well__bedrock_depth__COMPUTED={};%       DTB{s,1}.well.bedrock_depth__COMPUTED   = 'n.a.';
+DTB__well__bedrock_depth__IBS1999={};%       DTB{s,1}.well.bedrock_depth__IBS1999    = 'n.a.';
+DTB__well__bedrock_depth__PAROLAI2002={};%        DTB{s,1}.well.bedrock_depth__PAROLAI2002= 'n.a.';
+DTB__well__bedrock_depth__HINZEN2004={};%        DTB{s,1}.well.bedrock_depth__HINZEN2004 = 'n.a.';
+%% Database =====================END
+%%
+%CHANGE LOAD-ELABORATION                             FIX
+%CORRECT ISSUE FOUND IN MAIN .hvsr.hvsr....   FIX
 %
 %
 %% NEW AND TEMPORARY FEATURES xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -195,8 +296,7 @@ H.menu.extra_figure_all_hvsr = uimenu(H.menu.view.extra,'Label','figure: all hvs
 %
 %
 %%    About
-H.menu.credits  = uimenu(H.gui,'Label','Info');
-uimenu(H.menu.credits,'Label','Credits','Callback',{@Menu_About_Credits});
+H.menu.credits  = uimenu(H.gui,'Label','Credits','Callback',{@Menu_About_Credits});
 %%
 %% ************************* INTERFACE OBJECTS ****************************
 %% Panels
@@ -1100,7 +1200,7 @@ hAx_speN_hcmenu_5 = uimenu(hAx_speN_hcmenu , 'Label', 'Delete curves',     'Call
 hAx_speN_hcmenu_6 = uimenu(hAx_speN_hcmenu , 'Label', 'Resume curves',     'Callback', {@CM_spectrum_resume_curves});
 hAx_speN_hcmenu_3 = uimenu(hAx_speN_hcmenu , 'Label', 'Use Manual Peak',   'Callback', {@CM_spectrum_select_main_peak}, 'Separator','on');
 hAx_speN_hcmenu_4 = uimenu(hAx_speN_hcmenu , 'Label', 'Use Auto Peak',     'Callback', {@CM_spectrum_deselect_main_peak});
-uimenu(hAx_speN_hcmenu , 'Label', 'Set vertical range',    'Callback',{@CM_speN_SetrangeVax}, 'Separator','on');%,    'Callback', {@CM_show_win_data});
+uimenu(hAx_speN_hcmenu , 'Label', 'Set vertical range',    'Callback',{@CM_speN_SetrangeVax}, 'Separator','on');
 uimenu(hAx_speN_hcmenu , 'Label', 'Reset vertical range',  'Callback',{@CM_speN_resetVax});
 uimenu(hAx_speN_hcmenu , 'Label', 'Set horizontal range',  'Callback',{@CM_speN_SetrangeHax}, 'Separator','on');
 uimenu(hAx_speN_hcmenu , 'Label', 'Reset horizontal range','Callback',{@CM_speN_resetHax});
@@ -1139,8 +1239,8 @@ P3_TA_buttongroup_option{9} = 'curves';%  8 Diirectional (curves)
 %%            Spectrums
 objw = [0.4 0.3 0.3];
 objx = [0   0.4 0.7];
-%row=1;
-row=2; % FIX
+row=1;
+%row=2; % FIX
 uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','text', ...
     'parent',hP3_TA_buttongroup, ...
     'String','Spectrum Tile', ...
@@ -1150,11 +1250,6 @@ T3_Option_1_1 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,
     'String',P3_TA_buttongroup_option{1}, ...
     'Units','normalized','Position',[objx(2), objy(row), objw(2), objh], ...
     'Callback',{@CB_spectrum_of_windows});
-% % T3_Option_1_2 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','radiobutton', ...
-% %     'parent',hP3_TA_buttongroup, ...
-% %     'String',P3_TA_buttongroup_option{2}, ...
-% %     'Units','normalized','Position',[objx(3), objy(row), objw(3), objh], ...
-% %     'Callback',{@CB_contouring_of_windows});
 %%            Spectal ratios
 row=row+1;
 uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','text', ...
@@ -1166,11 +1261,6 @@ T3_Option_2_1 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,
     'String',P3_TA_buttongroup_option{3}, ...
     'Units','normalized','Position',[objx(2), objy(row), objw(2), objh], ...
     'Callback',{@CB_hvsr_of_windows});
-% % T3_Option_2_2 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','radiobutton', ...
-% %     'parent',hP3_TA_buttongroup, ...
-% %     'String',P3_TA_buttongroup_option{4}, ...
-% %     'Units','normalized','Position',[objx(3), objy(row), objw(3), objh], ...
-% %     'Callback',{@CB_hvsr_contouring_of_windows});
 %%            HVSR curve
 row=row+1;
 objw = [0.4 0.2 0.2 0.2];
@@ -1928,7 +2018,6 @@ fprintf('[READY !]\n');
 %%      Files
 %%        Project
     function Menu_Project_Create(~,~,~)
-        %>> warning('FIXing...  THIS FUNCTION')
         folder_name = uigetdir(working_folder,'Select working Folder for the project');
         if(folder_name)
             [file_format,SURVEYS,datafile_separator,datafile_columns,nameof_topography_file] = ...
@@ -2083,7 +2172,7 @@ fprintf('[READY !]\n');
         Ndata = size(SURVEYS,1);
         no_procede=0;
         for d = 1:Ndata
-            if DTB{d,1}.wndows.number>0
+            if DTB__windows__number(d,1)>0
                 no_procede = 1;  
             end
         end
@@ -2150,13 +2239,13 @@ fprintf('[READY !]\n');
                         [~,s,~]=fileparts(SURVEYS{ff,2});
                         fname = strcat(folder_name,'/',s,'.hv');
 
-                        ifmin = DTB{ff,1}.section.Frequency_Vector(1);
-                        ifmax = DTB{ff,1}.section.Frequency_Vector(2);
-                        df    = DTB{ff,1}.section.Frequency_Vector(3);
+                        ifmin = DTB__section__Frequency_Vector{ff,1}(1);
+                        ifmax = DTB__section__Frequency_Vector{ff,1}(2);
+                        df    = DTB__section__Frequency_Vector{ff,1}(3);
                         fr = df*( (ifmin-1):(ifmax-1) ).';
-                        hv = DTB{ff,1}.hvsr.curve;
+                        hv = DTB__hvsr__curve{ff,1};
                         % >>>  er = DTB{ff,1}.hvsr.error;% relative error
-                        er = DTB{ff,1}.hvsr.standard_deviation;% standard deviation
+                        er = DTB__hvsr__standard_deviation{ff,1};% standard deviation
                         %
                         dd = [fr, hv, er]; 
                         save(fname,'dd','-ascii');
@@ -2178,10 +2267,10 @@ fprintf('[READY !]\n');
                     %% write subsurface files
                     for ir = 1:Nsurveys
                         %% HH
-                        if ~isnan(DTB{ir,1}.hvsr.user_main_peak_frequence)
-                            F0 = DTB{ir,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
+                        if ~isnan(DTB__hvsr__user_main_peak_frequence(ir,1))
+                            F0 = DTB__hvsr__user_main_peak_frequence(ir,1);% user selection is always preferred
                         else
-                            F0 = DTB{ir,1}.hvsr.auto_main_peak_frequence;
+                            F0 = DTB__hvsr__auto_main_peak_frequence(ir,1);
                         end
                         VSmean = 0.5*(VSmin+VSmax);
                         Hmax = VSmean/(4*F0);% F0 = Vs/4H >> H = Vs/4F0
@@ -2229,7 +2318,7 @@ fprintf('[READY !]\n');
         Ndata = size(SURVEYS,1);
         no_procede=0;
         for d = 1:Ndata
-            if DTB{d,1}.wndows.number>0
+            if DTB__windows__number(d,1)>0
                 no_procede = 1;  
             end
         end
@@ -2245,7 +2334,7 @@ fprintf('[READY !]\n');
         Ndata = size(SURVEYS,1);
         no_procede=0;
         for d = 1:Ndata
-            if DTB{d,1}.wndows.number>0
+            if DTB__windows__number(d,1)>0
                 no_procede = 1;  
             end
         end
@@ -2272,11 +2361,54 @@ fprintf('[READY !]\n');
     function Menu_Save_elaboration(~,~,~)
         if isempty(SURVEYS); return; end
         [file,thispath] =  uiputfile('*.mat','Save elaboration', strcat(working_folder,'Elaboration.mat'));
+%% =========================== V1.0.0-V1.0.1 
+%         if(file ~= 0)
+%             is_busy();
+%             name = file(1:end-4);
+%             datname = strcat(thispath,name,'_MAIN.mat');
+%             save(datname, ...
+%                 'file', ...
+%                 'thispath', ...
+%                 'DDAT', ...
+%                 'FDAT', ...
+%                 'Matlab_Release', ...
+%                 'Matlab_Release_num', ...
+%                 'SURVEYS', ...
+%                 'TOPOGRAPHY', ...% MANUALLY PLACED HERE
+%                 'WELLS', ...
+%                 'WLLS', ...
+%                 'datafile_columns', ...
+%                 'datafile_separator', ...
+%                 'receiver_locations', ...
+%                 'reference_system', ...
+%                 'sampling_frequences', ...
+%                 ...% 'survey_boundingboox', ...
+%                 'working_folder');
+%             %
+%             NN = size(SURVEYS,1);
+%             sNN = num2str(NN);
+%             for ii=1:NN
+%                 fprintf('Save %d/%d',ii,NN) 
+%                 datname = strcat(thispath,name,'_database_',num2str(ii),'of',sNN,'.mat');
+%                 databas = DTB{ii,1};
+%                 save(datname, 'databas');
+%                 fprintf('..OK\n')
+%             end
+%             is_done();
+%             fprintf('[Elaboration saved]\n')
+%         end
+%% ================================ 
+%% =========================== V2.0.0 
         if(file ~= 0)
             is_busy();
             name = file(1:end-4);
+            %%   MAIN
             datname = strcat(thispath,name,'_MAIN.mat');
+            appname = P.appname;
+            save_version = 2;
             save(datname, ...
+                'appname', ... %181111  just to check the correct data is loaded
+                'save_version', ...%181111 discern which load function to run
                 'file', ...
                 'thispath', ...
                 'DDAT', ...
@@ -2294,19 +2426,215 @@ fprintf('[READY !]\n');
                 'sampling_frequences', ...
                 ...% 'survey_boundingboox', ...
                 'working_folder');
-            %
+            
             NN = size(SURVEYS,1);
             sNN = num2str(NN);
             for ii=1:NN
                 fprintf('Save %d/%d',ii,NN) 
                 datname = strcat(thispath,name,'_database_',num2str(ii),'of',sNN,'.mat');
-                databas = DTB{ii,1};
-                save(datname, 'databas');
+                %% COPY 
+                %%   DTB__status
+                iDTB__status = DTB__status(ii,1);%                                            
+                iDTB__elaboration_progress = DTB__elaboration_progress(ii,1);
+                %%   DTB__windows
+                iDTB__windows__width_sec = DTB__windows__width_sec(ii,1);          
+                iDTB__windows__number =DTB__windows__number(ii,1);
+                iDTB__windows__number_fft = DTB__windows__number_fft(ii,1);
+                iDTB__windows__indexes = DTB__windows__indexes{ii,1};
+                iDTB__windows__is_ok = DTB__windows__is_ok{ii,1};
+                iDTB__windows__winv = DTB__windows__winv{ii,1};                 
+                iDTB__windows__wine = DTB__windows__wine{ii,1};
+                iDTB__windows__winn = DTB__windows__winn{ii,1};
+                iDTB__windows__fftv = DTB__windows__fftv{ii,1};
+                iDTB__windows__ffte = DTB__windows__ffte{ii,1};
+                iDTB__windows__fftn = DTB__windows__fftn{ii,1};
+                iDTB__windows__info = DTB__windows__info(ii,:);                  
+                %%   i = DTB__elab_parameters        
+                iDTB__elab_parameters__status = DTB__elab_parameters__status{ii,1};
+                iDTB__elab_parameters__hvsr_strategy = DTB__elab_parameters__hvsr_strategy(ii,1);
+                iDTB__elab_parameters__hvsr_freq_min = DTB__elab_parameters__hvsr_freq_min(ii,1);
+                iDTB__elab_parameters__hvsr_freq_max = DTB__elab_parameters__hvsr_freq_max(ii,1);
+                iDTB__elab_parameters__windows_width = DTB__elab_parameters__windows_width(ii,1);
+                iDTB__elab_parameters__windows_overlap = DTB__elab_parameters__windows_overlap(ii,1);
+                iDTB__elab_parameters__windows_tapering = DTB__elab_parameters__windows_tapering(ii,1);
+                iDTB__elab_parameters__windows_sta_vs_lta = DTB__elab_parameters__windows_sta_vs_lta(ii,1);
+                iDTB__elab_parameters__windows_pad = DTB__elab_parameters__windows_pad{ii,1};
+                iDTB__elab_parameters__smoothing_strategy = DTB__elab_parameters__smoothing_strategy(ii,1);
+                iDTB__elab_parameters__smoothing_slider_val = DTB__elab_parameters__smoothing_slider_val(ii,1);
+                        %
+                        % filter
+                iDTB__elab_parameters__filter_id = DTB__elab_parameters__filter_id(ii,1);
+                iDTB__elab_parameters__filter_name = DTB__elab_parameters__filter_name{ii,1};
+                iDTB__elab_parameters__filter_order = DTB__elab_parameters__filter_order(ii,1);
+                iDTB__elab_parameters__filterFc1 = DTB__elab_parameters__filterFc1(ii,1);
+                iDTB__elab_parameters__filterFc2 = DTB__elab_parameters__filterFc2(ii,1);
+                iDTB__elab_parameters__data_to_use = DTB__elab_parameters__data_to_use(ii,1);
+                iDTB__elab_parameters__THEfilter = DTB__elab_parameters__THEfilter{ii,1};
+                %%   i = DTB__section
+                iDTB__section__Min_Freq = DTB__section__Min_Freq(ii,1);
+                iDTB__section__Max_Freq = DTB__section__Max_Freq(ii,1);
+                iDTB__section__Frequency_Vector = DTB__section__Frequency_Vector{ii,1};
+                        %
+                iDTB__section__V_windows = DTB__section__V_windows{ii,1};
+                iDTB__section__E_windows = DTB__section__E_windows{ii,1};
+                iDTB__section__N_windows = DTB__section__N_windows{ii,1};
+                        %
+                iDTB__section__Average_V = DTB__section__Average_V{ii,1};
+                iDTB__section__Average_E = DTB__section__Average_E{ii,1};
+                iDTB__section__Average_N = DTB__section__Average_N{ii,1};
+                        %
+                iDTB__section__HV_windows = DTB__section__HV_windows{ii,1};
+                iDTB__section__EV_windows = DTB__section__EV_windows{ii,1};
+                iDTB__section__NV_windows = DTB__section__NV_windows{ii,1};
+                %%   i = DTB__hvsr
+                iDTB__hvsr__curve_full = DTB__hvsr__curve_full{ii,1};
+                %DTB{s,1}.hvsr.error_full = [];
+                iDTB__hvsr__confidence95_full = DTB__hvsr__confidence95_full{ii,1};
+                iDTB__hvsr__curve_EV_full = DTB__hvsr__curve_EV_full{ii,1};
+                iDTB__hvsr__curve_NV_full = DTB__hvsr__curve_NV_full{ii,1};
+                %
+                iDTB__hvsr__EV_all_windows = DTB__hvsr__EV_all_windows{ii,1};
+                iDTB__hvsr__NV_all_windows = DTB__hvsr__NV_all_windows{ii,1};
+                iDTB__hvsr__HV_all_windows = DTB__hvsr__HV_all_windows{ii,1};
+                %
+                iDTB__hvsr__curve = DTB__hvsr__curve{ii,1};
+                        %DTB{s,1}.hvsr.error = [];
+                iDTB__hvsr__confidence95 = DTB__hvsr__confidence95{ii,1};
+                iDTB__hvsr__standard_deviation = DTB__hvsr__standard_deviation{ii,1};
+                iDTB__hvsr__curve_EV = DTB__hvsr__curve_EV{ii,1};
+                iDTB__hvsr__curve_NV = DTB__hvsr__curve_NV{ii,1};
+                        %
+                iDTB__hvsr__peaks_idx = DTB__hvsr__peaks_idx{ii,1};
+                iDTB__hvsr__hollows_idx = DTB__hvsr__hollows_idx{ii,1};
+                        %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
+                        % hvsr peaks (authomatic/user)
+                iDTB__hvsr__user_main_peak_frequence = DTB__hvsr__user_main_peak_frequence(ii,1);
+                iDTB__hvsr__user_main_peak_amplitude = DTB__hvsr__user_main_peak_amplitude(ii,1);
+                iDTB__hvsr__user_main_peak_id_full_curve = DTB__hvsr__user_main_peak_id_full_curve(ii,1);
+                iDTB__hvsr__user_main_peak_id_in_section = DTB__hvsr__user_main_peak_id_in_section(ii,1);
+                iDTB__hvsr__auto_main_peak_frequence = DTB__hvsr__auto_main_peak_frequence(ii,1);
+                iDTB__hvsr__auto_main_peak_amplitude = DTB__hvsr__auto_main_peak_amplitude(ii,1);
+                iDTB__hvsr__auto_main_peak_id_full_curve = DTB__hvsr__auto_main_peak_id_full_curve(ii,1);
+                iDTB__hvsr__auto_main_peak_id_in_section = DTB__hvsr__auto_main_peak_id_in_section(ii,1);
+                %
+                %%   i = DTB__hvsr180
+                iDTB__hvsr180__angle_id = DTB__hvsr180__angle_id(ii,1);
+                iDTB__hvsr180__angles = DTB__hvsr180__angles{ii,1};
+                iDTB__hvsr180__angle_step = DTB__hvsr180__angle_step(ii,1);
+                iDTB__hvsr180__spectralratio = DTB__hvsr180__spectralratio{ii,1};
+                iDTB__hvsr180__preferred_direction = DTB__hvsr180__preferred_direction{ii,1};
+                %%   i = DTB__well
+                iDTB__well__well_id = DTB__well__well_id(ii,1);
+                iDTB__well__well_name = DTB__well__well_name{ii,1};
+                iDTB__well__bedrock_depth__KNOWN = DTB__well__bedrock_depth__KNOWN{ii,1};
+                iDTB__well__bedrock_depth_source = DTB__well__bedrock_depth_source{ii,1};
+                iDTB__well__bedrock_depth__COMPUTED = DTB__well__bedrock_depth__COMPUTED{ii,1};
+                iDTB__well__bedrock_depth__IBS1999 = DTB__well__bedrock_depth__IBS1999{ii,1};
+                iDTB__well__bedrock_depth__PAROLAI2002 = DTB__well__bedrock_depth__PAROLAI2002{ii,1};
+                iDTB__well__bedrock_depth__HINZEN2004 = DTB__well__bedrock_depth__HINZEN2004{ii,1};
+                %% Database =====================END
+
+                save(datname, ...
+                ... %%   DTB__status
+                'iDTB__status', ...                                            
+                'iDTB__elaboration_progress', ... 
+                ...%%   DTB__windows
+                'iDTB__windows__width_sec', ...          
+                'iDTB__windows__number', ...
+                'iDTB__windows__number_fft', ... 
+                'iDTB__windows__indexes', ... 
+                'iDTB__windows__is_ok', ... 
+                'iDTB__windows__winv', ...                 
+                'iDTB__windows__wine', ... 
+                'iDTB__windows__winn', ... 
+                'iDTB__windows__fftv', ... 
+                'iDTB__windows__ffte', ... 
+                'iDTB__windows__fftn', ... 
+                'iDTB__windows__info', ...                 
+                ...%%   DTB__elab_parameters        
+                'iDTB__elab_parameters__status', ...
+                'iDTB__elab_parameters__hvsr_strategy', ...
+                'iDTB__elab_parameters__hvsr_freq_min', ...
+                'iDTB__elab_parameters__hvsr_freq_max', ...
+                'iDTB__elab_parameters__windows_width', ...
+                'iDTB__elab_parameters__windows_overlap', ...
+                'iDTB__elab_parameters__windows_tapering', ...
+                'iDTB__elab_parameters__windows_sta_vs_lta', ...
+                'iDTB__elab_parameters__windows_pad', ...
+                'iDTB__elab_parameters__smoothing_strategy', ...
+                'iDTB__elab_parameters__smoothing_slider_val', ...
+                ...% filter
+                'iDTB__elab_parameters__filter_id', ... 
+                'iDTB__elab_parameters__filter_name', ... 
+                'iDTB__elab_parameters__filter_order', ...
+                'iDTB__elab_parameters__filterFc1', ...
+                'iDTB__elab_parameters__filterFc2', ...
+                'iDTB__elab_parameters__data_to_use', ...
+                'iDTB__elab_parameters__THEfilter', ...
+                ...%%   DTB__section
+                'iDTB__section__Min_Freq', ...
+                'iDTB__section__Max_Freq', ...
+                'iDTB__section__Frequency_Vector', ...
+                ...
+                'iDTB__section__V_windows', ... 
+                'iDTB__section__E_windows', ...
+                'iDTB__section__N_windows', ... 
+                ...
+                'iDTB__section__Average_V', ... 
+                'iDTB__section__Average_E', ... ;
+                'iDTB__section__Average_N', ...
+                ...
+                'iDTB__section__HV_windows', ... 
+                'iDTB__section__EV_windows', ...
+                'iDTB__section__NV_windows', ...
+                ...%%  DTB__hvsr
+                'iDTB__hvsr__curve_full', ... 
+                ...%DTB{s,1}.hvsr.error_full', ... [];
+                'iDTB__hvsr__confidence95_full', ... 
+                'iDTB__hvsr__curve_EV_full', ...
+                'iDTB__hvsr__curve_NV_full', ...
+                ...
+                'iDTB__hvsr__EV_all_windows', ...
+                'iDTB__hvsr__NV_all_windows', ...
+                'iDTB__hvsr__HV_all_windows', ...
+                'iDTB__hvsr__curve', ...
+                ...        %DTB{s,1}.hvsr.error', ... [];
+                'iDTB__hvsr__confidence95', ...
+                'iDTB__hvsr__standard_deviation', ...
+                'iDTB__hvsr__curve_EV', ...
+                'iDTB__hvsr__curve_NV', ...
+                ...
+                'iDTB__hvsr__peaks_idx', ... 
+                'iDTB__hvsr__hollows_idx', ...
+                'iDTB__hvsr__user_main_peak_frequence', ...
+                'iDTB__hvsr__user_main_peak_amplitude', ...
+                'iDTB__hvsr__user_main_peak_id_full_curve', ...
+                'iDTB__hvsr__user_main_peak_id_in_section', ...
+                'iDTB__hvsr__auto_main_peak_frequence', ... 
+                'iDTB__hvsr__auto_main_peak_amplitude', ... 
+                'iDTB__hvsr__auto_main_peak_id_full_curve', ... 
+                'iDTB__hvsr__auto_main_peak_id_in_section', ... 
+                ...%%   DTB__hvsr180
+                'iDTB__hvsr180__angle_id', ... 
+                'iDTB__hvsr180__angles', ... 
+                'iDTB__hvsr180__angle_step', ... 
+                'iDTB__hvsr180__spectralratio', ...
+                'iDTB__hvsr180__preferred_direction', ... 
+                ...%%   DTB__well
+                'iDTB__well__well_id', ... 
+                'iDTB__well__well_name', ...
+                'iDTB__well__bedrock_depth__KNOWN', ... 
+                'iDTB__well__bedrock_depth_source', ... 
+                'iDTB__well__bedrock_depth__COMPUTED', ... 
+                'iDTB__well__bedrock_depth__IBS1999', ... 
+                'iDTB__well__bedrock_depth__PAROLAI2002', ...
+                'iDTB__well__bedrock_depth__HINZEN2004');   
+                
                 fprintf('..OK\n')
             end
             is_done();
             fprintf('[Elaboration saved]\n')
-        end
+        end             
     end
     function Menu_Load_elaboration(~,~,~)
         [file,thispath] = uigetfile('*.mat','Resume Elaboration',strcat(working_folder,'/Elaboration.mat'));        
@@ -2319,11 +2647,10 @@ fprintf('[READY !]\n');
             
             %% load the store data
             BIN = load(datname, '-mat');
-            %% ========================================================================
             if isfield(BIN,'DDAT');  DDAT= BIN.DDAT; end
             if isfield(BIN,'FDAT');  FDAT= BIN.FDAT; end
-            if isfield(BIN,'Matlab_Release');  Matlab_Release= BIN.Matlab_Release; end
-            if isfield(BIN,'Matlab_Release_num');  Matlab_Release_num= BIN.Matlab_Release_num; end
+            % NO LOAD Matlab_Release
+            % NO LOAD Matlab_Release_num
             if isfield(BIN,'SURVEYS');  SURVEYS= BIN.SURVEYS; end
             if isfield(BIN,'TOPOGRAPHY');  TOPOGRAPHY= BIN.TOPOGRAPHY; end% MANUALLY PLACED HERE
             if isfield(BIN,'WELLS'); WELLS = BIN.WELLS; end
@@ -2335,31 +2662,263 @@ fprintf('[READY !]\n');
             if isfield(BIN,'sampling_frequences');  sampling_frequences= BIN.sampling_frequences; end
             % if isfield(BIN,'survey_boundingboox');  survey_boundingboox= BIN.survey_boundingboox; end
             if isfield(BIN,'working_folder');  working_folder = BIN.working_folder; end
-            %
+            
             %% Load the database
+            INIT_DATA_RELATED();
             name = file(1:end-9);% discard the '_MAIN.mat' part.
             NN = size(SURVEYS,1);
             sNN = num2str(NN);
-            DTB = cell(NN,1);
-            for ix=1:NN
-               fprintf('Loading measure %d/%d',ix,NN) 
-               datname = strcat(thispath,name,'_database_',num2str(ix),'of',sNN,'.mat');
-               loaded = load(datname);
-               DTB{ix,1}.status               = loaded.databas.status;
-               DTB{ix,1}.alaboration_progress = loaded.databas.alaboration_progress;
-               DTB{ix,1}.wndows               = loaded.databas.wndows;
-               DTB{ix,1}.elab_parameters      = loaded.databas.elab_parameters;
-               DTB{ix,1}.section              = loaded.databas.section;
-               DTB{ix,1}.hvsr                 = loaded.databas.hvsr;
-               DTB{ix,1}.hvsr180              = loaded.databas.hvsr180;
-               DTB{ix,1}.well                 = loaded.databas.well;
-               fprintf('..OK\n')
+            if isfield(BIN,'save_version')
+                if( BIN.save_version==2)% load V2.0.0+  set of files
+                    fprintf('[archive version:2 (From V2.0.0)]\n')
+                    for ii=1:NN
+                       fprintf('Loading measure %d/%d',ii,NN) 
+                       datname = strcat(thispath,name,'_database_',num2str(ii),'of',sNN,'.mat');
+                       loaded = load(datname);
+                    %%   DTB__status
+                        DTB__status(ii,1) = loaded.iDTB__status;                                             
+                        DTB__elaboration_progress(ii,1) = loaded.iDTB__elaboration_progress; 
+                        %%   DTB__windows
+                        DTB__windows__width_sec(ii,1) = loaded.iDTB__windows__width_sec;           
+                        DTB__windows__number(ii,1) = loaded.iDTB__windows__number;
+                        DTB__windows__number_fft(ii,1) = loaded.iDTB__windows__number_fft; 
+                        DTB__windows__indexes{ii,1} = loaded.iDTB__windows__indexes; 
+                        DTB__windows__is_ok{ii,1} = loaded.iDTB__windows__is_ok; 
+                        DTB__windows__winv{ii,1} = loaded.iDTB__windows__winv;                 
+                        DTB__windows__wine{ii,1} = loaded.iDTB__windows__wine; 
+                        DTB__windows__winn{ii,1} = loaded.iDTB__windows__winn; 
+                        DTB__windows__fftv{ii,1} = loaded.iDTB__windows__fftv; 
+                        DTB__windows__ffte{ii,1} = loaded.iDTB__windows__ffte; 
+                        DTB__windows__fftn{ii,1} = loaded.iDTB__windows__fftn; 
+                        DTB__windows__info(ii,:) = loaded.iDTB__windows__info;                   
+                        %%   i = DTB__elab_parameters        
+                        DTB__elab_parameters__status{ii,1} = loaded.iDTB__elab_parameters__status; 
+                        DTB__elab_parameters__hvsr_strategy(ii,1) = loaded.iDTB__elab_parameters__hvsr_strategy; 
+                        DTB__elab_parameters__hvsr_freq_min(ii,1) =  loaded.iDTB__elab_parameters__hvsr_freq_min; 
+                        DTB__elab_parameters__hvsr_freq_max(ii,1) = loaded.iDTB__elab_parameters__hvsr_freq_max; 
+                        DTB__elab_parameters__windows_width(ii,1) = loaded.iDTB__elab_parameters__windows_width; 
+                        DTB__elab_parameters__windows_overlap(ii,1) = loaded.iDTB__elab_parameters__windows_overlap; 
+                        DTB__elab_parameters__windows_tapering(ii,1) = loaded.iDTB__elab_parameters__windows_tapering; 
+                        DTB__elab_parameters__windows_sta_vs_lta(ii,1) = loaded.iDTB__elab_parameters__windows_sta_vs_lta; 
+                        DTB__elab_parameters__windows_pad{ii,1} = loaded.iDTB__elab_parameters__windows_pad; 
+                        DTB__elab_parameters__smoothing_strategy(ii,1) = loaded.iDTB__elab_parameters__smoothing_strategy; 
+                        DTB__elab_parameters__smoothing_slider_val(ii,1) = loaded.iDTB__elab_parameters__smoothing_slider_val; 
+                                %
+                                % filter
+                        DTB__elab_parameters__filter_id(ii,1) = loaded.iDTB__elab_parameters__filter_id;
+                        DTB__elab_parameters__filter_name{ii,1} = loaded.iDTB__elab_parameters__filter_name;
+                        DTB__elab_parameters__filter_order(ii,1) = loaded.iDTB__elab_parameters__filter_order; 
+                        DTB__elab_parameters__filterFc1(ii,1) = loaded.iDTB__elab_parameters__filterFc1;
+                        DTB__elab_parameters__filterFc2(ii,1) = loaded.iDTB__elab_parameters__filterFc2; 
+                        DTB__elab_parameters__data_to_use(ii,1) = loaded.iDTB__elab_parameters__data_to_use; 
+                        DTB__elab_parameters__THEfilter{ii,1} =loaded.iDTB__elab_parameters__THEfilter;
+                        %%   i = DTB__section
+                        DTB__section__Min_Freq(ii,1) = loaded.iDTB__section__Min_Freq;
+                        DTB__section__Max_Freq(ii,1) = loaded.iDTB__section__Max_Freq; 
+                        DTB__section__Frequency_Vector{ii,1} = loaded.iDTB__section__Frequency_Vector;
+                                %
+                        DTB__section__V_windows{ii,1} = loaded.iDTB__section__V_windows;
+                        DTB__section__E_windows{ii,1} = loaded.iDTB__section__E_windows; 
+                        DTB__section__N_windows{ii,1} = loaded.iDTB__section__N_windows; 
+                                %
+                        DTB__section__Average_V{ii,1} = loaded.iDTB__section__Average_V; 
+                        DTB__section__Average_E{ii,1} = loaded.iDTB__section__Average_E; 
+                        DTB__section__Average_N{ii,1} = loaded.iDTB__section__Average_N; 
+                                %
+                        DTB__section__HV_windows{ii,1} = loaded.iDTB__section__HV_windows; 
+                        DTB__section__EV_windows{ii,1} = loaded.iDTB__section__EV_windows;
+                        DTB__section__NV_windows{ii,1} = loaded.iDTB__section__NV_windows; 
+                        %%   i = DTB__hvsr
+                        DTB__hvsr__curve_full{ii,1} = loaded.iDTB__hvsr__curve_full;
+                        %DTB{s,1}.hvsr.error_full = [];
+                        DTB__hvsr__confidence95_full{ii,1} = loaded.iDTB__hvsr__confidence95_full; 
+                        DTB__hvsr__curve_EV_full{ii,1} = loaded.iDTB__hvsr__curve_EV_full;
+                        DTB__hvsr__curve_NV_full{ii,1} = loaded.iDTB__hvsr__curve_NV_full; 
+                        %
+                        DTB__hvsr__EV_all_windows{ii,1} = loaded.iDTB__hvsr__EV_all_windows; 
+                        DTB__hvsr__NV_all_windows{ii,1} = loaded.iDTB__hvsr__NV_all_windows; 
+                        DTB__hvsr__HV_all_windows{ii,1} = loaded.iDTB__hvsr__HV_all_windows; 
+                        %
+                        DTB__hvsr__curve{ii,1} = loaded.iDTB__hvsr__curve;
+                                %DTB{s,1}.hvsr.error = [];
+                        DTB__hvsr__confidence95{ii,1} = loaded.iDTB__hvsr__confidence95; 
+                        DTB__hvsr__standard_deviation{ii,1} = loaded.iDTB__hvsr__standard_deviation; 
+                        DTB__hvsr__curve_EV{ii,1} = loaded.iDTB__hvsr__curve_EV;
+                        DTB__hvsr__curve_NV{ii,1} = loaded.iDTB__hvsr__curve_NV; 
+                                %
+                        DTB__hvsr__peaks_idx{ii,1} = loaded.iDTB__hvsr__peaks_idx; 
+                        DTB__hvsr__hollows_idx{ii,1} = loaded.iDTB__hvsr__hollows_idx; 
+                                %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
+                                % hvsr peaks (authomatic/user)
+                        DTB__hvsr__user_main_peak_frequence(ii,1) = loaded.iDTB__hvsr__user_main_peak_frequence; 
+                        DTB__hvsr__user_main_peak_amplitude(ii,1) = loaded.iDTB__hvsr__user_main_peak_amplitude; 
+                        DTB__hvsr__user_main_peak_id_full_curve(ii,1) = loaded.iDTB__hvsr__user_main_peak_id_full_curve; 
+                        DTB__hvsr__user_main_peak_id_in_section(ii,1) = loaded.iDTB__hvsr__user_main_peak_id_in_section; 
+                        DTB__hvsr__auto_main_peak_frequence(ii,1) = loaded.iDTB__hvsr__auto_main_peak_frequence;
+                        DTB__hvsr__auto_main_peak_amplitude(ii,1) = loaded.iDTB__hvsr__auto_main_peak_amplitude; 
+                        DTB__hvsr__auto_main_peak_id_full_curve(ii,1) = loaded.iDTB__hvsr__auto_main_peak_id_full_curve; 
+                        DTB__hvsr__auto_main_peak_id_in_section(ii,1) = loaded.iDTB__hvsr__auto_main_peak_id_in_section; 
+                        %
+                        %%   i = DTB__hvsr180
+                        DTB__hvsr180__angle_id(ii,1) = loaded.iDTB__hvsr180__angle_id;
+                        DTB__hvsr180__angles{ii,1} = loaded.iDTB__hvsr180__angles;
+                        DTB__hvsr180__angle_step(ii,1) = loaded.iDTB__hvsr180__angle_step; 
+                        DTB__hvsr180__spectralratio{ii,1} = loaded.iDTB__hvsr180__spectralratio; 
+                        DTB__hvsr180__preferred_direction{ii,1} = loaded.iDTB__hvsr180__preferred_direction; 
+                        %%   i = DTB__well
+                        DTB__well__well_id(ii,1) = loaded.iDTB__well__well_id;
+                        DTB__well__well_name{ii,1} = loaded.iDTB__well__well_name; 
+                        DTB__well__bedrock_depth__KNOWN{ii,1} = loaded.iDTB__well__bedrock_depth__KNOWN;
+                        DTB__well__bedrock_depth_source{ii,1} = loaded.iDTB__well__bedrock_depth_source;
+                        DTB__well__bedrock_depth__COMPUTED{ii,1} = loaded.iDTB__well__bedrock_depth__COMPUTED; 
+                        DTB__well__bedrock_depth__IBS1999{ii,1} = loaded.iDTB__well__bedrock_depth__IBS1999;
+                        DTB__well__bedrock_depth__PAROLAI2002{ii,1} = loaded.iDTB__well__bedrock_depth__PAROLAI2002;
+                        DTB__well__bedrock_depth__HINZEN2004{ii,1} = loaded.iDTB__well__bedrock_depth__HINZEN2004;
+                        %% Database =====================END
+                       fprintf('..OK\n')
+                       clear loaded
+                    end  
+                end
+            else%                                      load V1.0.0 - V1.0.1  set of files
+                fprintf('[archive version:1 (From V1.0.0 of V1.0.1)]\n')
+                for ii=1:NN
+                   fprintf('Loading measure %d/%d',ii,NN) 
+                   datname = strcat(thispath,name,'_database_',num2str(ii),'of',sNN,'.mat');
+                   loaded = load(datname);
+                   
+                 %%   DTB__status
+                    DTB__status(ii,1) = loaded.databas.status;                                            
+                    if isfield(loaded.databas,'alaboration_progress'); DTB__elaboration_progress(ii,1) = loaded.databas.alaboration_progress; end
+                 %%   DTB__windows
+                    if isfield(loaded.databas,'wndows.width_sec'); DTB__windows__width_sec(ii,1) = loaded.databas.wndows.width_sec; end          
+                    DTB__windows__number(ii,1) = loaded.databas.wndows.number;
+                    DTB__windows__number_fft(ii,1) = loaded.databas.wndows.number_fft; 
+                    DTB__windows__indexes{ii,1} = loaded.databas.wndows.indexes; 
+                    DTB__windows__is_ok{ii,1} = loaded.databas.wndows.is_ok; 
+                    DTB__windows__winv{ii,1} = loaded.databas.wndows.winv;                 
+                    DTB__windows__wine{ii,1} = loaded.databas.wndows.wine; 
+                    DTB__windows__winn{ii,1} = loaded.databas.wndows.winn; 
+                    DTB__windows__fftv{ii,1} = loaded.databas.wndows.fftv; 
+                    DTB__windows__ffte{ii,1} = loaded.databas.wndows.ffte; 
+                    DTB__windows__fftn{ii,1} = loaded.databas.wndows.fftn; 
+                    DTB__windows__info(ii,:) = loaded.databas.wndows.info;                   
+                    %%  DTB__elab_parameters        
+                    DTB__elab_parameters__status{ii,1} = loaded.databas.elab_parameters.status; 
+                    DTB__elab_parameters__hvsr_strategy(ii,1) = loaded.databas.elab_parameters.hvsr_strategy; 
+                    DTB__elab_parameters__hvsr_freq_min(ii,1) =  loaded.databas.elab_parameters.hvsr_freq_min; 
+                    DTB__elab_parameters__hvsr_freq_max(ii,1) = loaded.databas.elab_parameters.hvsr_freq_max; 
+                    DTB__elab_parameters__windows_width(ii,1) = loaded.databas.elab_parameters.windows_width; 
+                    DTB__elab_parameters__windows_overlap(ii,1) = loaded.databas.elab_parameters.windows_overlap; 
+                    DTB__elab_parameters__windows_tapering(ii,1) = loaded.databas.elab_parameters.windows_tapering; 
+                    DTB__elab_parameters__windows_sta_vs_lta(ii,1) = loaded.databas.elab_parameters.windows_sta_vs_lta; 
+                    DTB__elab_parameters__windows_pad{ii,1} = loaded.databas.elab_parameters.windows_pad; 
+                    DTB__elab_parameters__smoothing_strategy(ii,1) = loaded.databas.elab_parameters.smoothing_strategy; 
+                    DTB__elab_parameters__smoothing_slider_val(ii,1) = loaded.databas.elab_parameters.smoothing_slider_val; 
+                            %
+                            % filter
+                    DTB__elab_parameters__filter_id(ii,1) = loaded.databas.elab_parameters.filter_id;
+                    DTB__elab_parameters__filter_name{ii,1} = loaded.databas.elab_parameters.filter_name;
+                    DTB__elab_parameters__filter_order(ii,1) = loaded.databas.elab_parameters.filter_order; 
+                    DTB__elab_parameters__filterFc1(ii,1) = loaded.databas.elab_parameters.filterFc1;
+                    DTB__elab_parameters__filterFc2(ii,1) = loaded.databas.elab_parameters.filterFc2; 
+                    DTB__elab_parameters__data_to_use(ii,1) = loaded.databas.elab_parameters.data_to_use; 
+                    if isfield(loaded.databas,'elab_parameters.THEfilter'); DTB__elab_parameters__THEfilter{ii,1} =loaded.databas.elab_parameters.THEfilter; end
+                    %%  DTB__section
+                    DTB__section__Min_Freq(ii,1) = loaded.databas.section.Min_Freq;
+                    DTB__section__Max_Freq(ii,1) = loaded.databas.section.Max_Freq; 
+                    DTB__section__Frequency_Vector{ii,1} = loaded.databas.section.Frequency_Vector;
+                            %
+                    DTB__section__V_windows{ii,1} = loaded.databas.section.V_windows;
+                    DTB__section__E_windows{ii,1} = loaded.databas.section.E_windows; 
+                    DTB__section__N_windows{ii,1} = loaded.databas.section.N_windows; 
+                            %
+                    DTB__section__Average_V{ii,1} = loaded.databas.section.Average_V; 
+                    DTB__section__Average_E{ii,1} = loaded.databas.section.Average_E; 
+                    DTB__section__Average_N{ii,1} = loaded.databas.section.Average_N; 
+                            %
+                    DTB__section__HV_windows{ii,1} = loaded.databas.section.HV_windows; 
+                    DTB__section__EV_windows{ii,1} = loaded.databas.section.EV_windows;
+                    DTB__section__NV_windows{ii,1} = loaded.databas.section.NV_windows; 
+                    %%  DTB__hvsr
+                    DTB__hvsr__curve_full{ii,1} = loaded.databas.hvsr.curve_full;
+                    %DTB{s,1}.hvsr.error_full = [];
+                    DTB__hvsr__confidence95_full{ii,1} = loaded.databas.hvsr.confidence95_full; 
+                    DTB__hvsr__curve_EV_full{ii,1} = loaded.databas.hvsr.curve_EV_full;
+                    DTB__hvsr__curve_NV_full{ii,1} = loaded.databas.hvsr.curve_NV_full; 
+                    %
+                    DTB__hvsr__EV_all_windows{ii,1} = loaded.databas.hvsr.EV_all_windows; 
+                    DTB__hvsr__NV_all_windows{ii,1} = loaded.databas.hvsr.NV_all_windows; 
+                    DTB__hvsr__HV_all_windows{ii,1} = loaded.databas.hvsr.HV_all_windows; 
+                    %
+                    DTB__hvsr__curve{ii,1} = loaded.databas.hvsr.curve;
+                            %DTB{s,1}.hvsr.error = [];
+                    DTB__hvsr__confidence95{ii,1} = loaded.databas.hvsr.confidence95; 
+                    DTB__hvsr__standard_deviation{ii,1} = loaded.databas.hvsr.standard_deviation; 
+                    DTB__hvsr__curve_EV{ii,1} = loaded.databas.hvsr.curve_EV;
+                    DTB__hvsr__curve_NV{ii,1} = loaded.databas.hvsr.curve_NV; 
+                            %
+                    DTB__hvsr__peaks_idx{ii,1} = loaded.databas.hvsr.peaks_idx; 
+                    DTB__hvsr__hollows_idx{ii,1} = loaded.databas.hvsr.hollows_idx; 
+                            %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
+                            % hvsr peaks (authomatic/user)
+                    DTB__hvsr__user_main_peak_frequence(ii,1) = loaded.databas.hvsr.user_main_peak_frequence; 
+                    DTB__hvsr__user_main_peak_amplitude(ii,1) = loaded.databas.hvsr.user_main_peak_amplitude; 
+                    %% 
+                    if isfield(loaded.databas.hvsr,'user_main_peak_id_full_curve') 
+                        if ~isnan(loaded.databas.hvsr.user_main_peak_id_full_curve)
+                            DTB__hvsr__user_main_peak_id_full_curve(ii,1) = loaded.databas.hvsr.user_main_peak_id_full_curve; 
+                        end
+                    end
+                    if isfield(loaded.databas.hvsr.hvsr,'user_main_peak_id_full_curve') 
+                        if ~isnan(loaded.databas.hvsr.hvsr.user_main_peak_id_full_curve)
+                            DTB__hvsr__user_main_peak_id_full_curve(ii,1) = loaded.databas.hvsr.hvsr.user_main_peak_id_full_curve; 
+                        end
+                    end
+                    
+                    if isfield(loaded.databas.hvsr,'user_main_peak_id_in_section')
+                        if ~isnan(loaded.databas.hvsr.user_main_peak_id_in_section)
+                            DTB__hvsr__user_main_peak_id_in_section(ii,1) = loaded.databas.hvsr.user_main_peak_id_in_section;
+                        end
+                    end
+                    if isfield(loaded.databas.hvsr.hvsr,'user_main_peak_id_in_section')
+                        if ~isnan(loaded.databas.hvsr.hvsr.user_main_peak_id_in_section)
+                            DTB__hvsr__user_main_peak_id_in_section(ii,1) = loaded.databas.hvsr.hvsr.user_main_peak_id_in_section;
+                        end
+                    end
+                    
+                    %%
+                    DTB__hvsr__auto_main_peak_frequence(ii,1) = loaded.databas.hvsr.auto_main_peak_frequence;
+                    DTB__hvsr__auto_main_peak_amplitude(ii,1) = loaded.databas.hvsr.auto_main_peak_amplitude; 
+                    DTB__hvsr__auto_main_peak_id_full_curve(ii,1) = loaded.databas.hvsr.auto_main_peak_id_full_curve; 
+                    DTB__hvsr__auto_main_peak_id_in_section(ii,1) = loaded.databas.hvsr.auto_main_peak_id_in_section; 
+                    %
+                    %%  DTB__hvsr180
+                    DTB__hvsr180__angle_id(ii,1) = loaded.databas.hvsr180.angle_id;
+                    DTB__hvsr180__angles{ii,1} = loaded.databas.hvsr180.angles;
+                    DTB__hvsr180__angle_step(ii,1) = loaded.databas.hvsr180.angle_step; 
+                    DTB__hvsr180__spectralratio{ii,1} = loaded.databas.hvsr180.spectralratio; 
+                    DTB__hvsr180__preferred_direction{ii,1} = loaded.databas.hvsr180.preferred_direction; 
+                    %%  DTB__well
+                    DTB__well__well_id(ii,1) = loaded.databas.well.well_id;
+                    DTB__well__well_name{ii,1} = loaded.databas.well.well_name; 
+                    DTB__well__bedrock_depth__KNOWN{ii,1} = loaded.databas.well.bedrock_depth__KNOWN;
+                    DTB__well__bedrock_depth_source{ii,1} = loaded.databas.well.bedrock_depth_source;
+                    DTB__well__bedrock_depth__COMPUTED{ii,1} = loaded.databas.well.bedrock_depth__COMPUTED; 
+                    DTB__well__bedrock_depth__IBS1999{ii,1} = loaded.databas.well.bedrock_depth__IBS1999;
+                    DTB__well__bedrock_depth__PAROLAI2002{ii,1} = loaded.databas.well.bedrock_depth__PAROLAI2002;
+                    DTB__well__bedrock_depth__HINZEN2004{ii,1} = loaded.databas.well.bedrock_depth__HINZEN2004;
+                    %% Database =====================END
+                   
+                   
+                   fprintf('..OK\n')
+                   clear loaded
+                end
             end
-             fprintf('[Elaboration loaded correctly]\n')
+            fprintf('[Elaboration loaded correctly]\n')
             %% ========================================================================
             %% Update Interface
             P.isshown.id= 1;
-            P.isshown.accepted_windows = DTB{P.isshown.id,1}.wndows.is_ok;
+            P.isshown.accepted_windows = DTB__windows__is_ok{P.isshown.id,1};
             %
             Update_survey_locations(hAx_main_geo);
             Update_survey_locations(hAx_geo1);
@@ -2375,9 +2934,9 @@ fprintf('[READY !]\n');
             else
                 set(h_contour_extra_points,  'Enable','on');% on tab 4
                 set(h_bedrock_extra_points3d,'Enable','on');% on tab 5
-            end
+            end           
             %%
-            fprintf('[Elaboration resumed Correctly]\n')
+            fprintf('[Ready!]\n')
             is_done();
         end
     end
@@ -2567,7 +3126,7 @@ fprintf('[READY !]\n');
             otherwise; val = val -1;
         end
         P.isshown.id= val;
-        P.isshown.accepted_windows = DTB{P.isshown.id,1}.wndows.is_ok;
+        P.isshown.accepted_windows = DTB__windows__is_ok{P.isshown.id,1};
         Graphic_Gui_update_elaboration_parameters();
         Update_survey_locations(hAx_main_geo);
         Update_survey_locations(hAx_geo1);
@@ -2589,7 +3148,7 @@ fprintf('[READY !]\n');
             otherwise; val = val +1;
         end
         P.isshown.id= val;
-        P.isshown.accepted_windows = DTB{P.isshown.id,1}.wndows.is_ok;
+        P.isshown.accepted_windows = DTB__windows__is_ok{P.isshown.id,1};
         Graphic_Gui_update_elaboration_parameters();
         Update_survey_locations(hAx_main_geo);
         Update_survey_locations(hAx_geo1);
@@ -2611,7 +3170,7 @@ fprintf('[READY !]\n');
             val = str2double(answer{1});
             if 0<val && val<=Ndat
                 P.isshown.id= val;
-                P.isshown.accepted_windows = DTB{P.isshown.id,1}.wndows.is_ok;
+                P.isshown.accepted_windows = DTB__windows__is_ok{P.isshown.id,1};
                 Graphic_Gui_update_elaboration_parameters();
                 Update_survey_locations(hAx_main_geo);
                 Update_survey_locations(hAx_geo1);
@@ -2816,9 +3375,9 @@ fprintf('[READY !]\n');
     %
     function CB_set_status(~,~,~)
         if P.isshown.id
-            switch DTB{P.isshown.id,1}.status
+            switch DTB__status(P.isshown.id,1)
                 case 1% if in progress, set done
-                    DTB{P.isshown.id,1}.status=0;
+                    DTB__status(P.isshown.id,1) = 0;
                     set(T1_PA_id     ,'BackgroundColor','g')
                     set(T1_PA_FileID ,'BackgroundColor','g')
                     set(T1_PA_status0,'BackgroundColor','g')
@@ -2826,7 +3385,7 @@ fprintf('[READY !]\n');
                     %
                     set(T1_PA_status ,'String','Locked')
                 case 0% if done, set excluded
-                    DTB{P.isshown.id,1}.status=2;
+                    DTB__status(P.isshown.id,1) = 2;
                     set(T1_PA_id     ,'BackgroundColor','r')
                     set(T1_PA_FileID ,'BackgroundColor','r')
                     set(T1_PA_status0,'BackgroundColor','r')
@@ -2834,7 +3393,7 @@ fprintf('[READY !]\n');
                     %
                     set(T1_PA_status ,'String','Excluded')
                 case 2% if excluded set unlocked
-                    DTB{P.isshown.id,1}.status=1;
+                    DTB__status(P.isshown.id,1) = 1;
                     set(T1_PA_id     ,'BackgroundColor',Status_bkground_color)
                     set(T1_PA_FileID ,'BackgroundColor',Status_bkground_color)
                     set(T1_PA_status0,'BackgroundColor',Status_bkground_color)
@@ -2854,17 +3413,17 @@ fprintf('[READY !]\n');
 %% TAB-2, Panel-C
     function CM_data_delete_win(~,~,~)
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
-        if DTB{P.isshown.id,1}.status==1
+        if DTB__status(P.isshown.id,1)==1
             [xmi,xma] = getxrange();% sec
             
             dt = 1/sampling_frequences(P.isshown.id);
-            n_of_windows = DTB{P.isshown.id,1}.wndows.number;
+            n_of_windows = DTB__windows__number(P.isshown.id,1);
             for w = 1:n_of_windows
-                ta = dt*(DTB{P.isshown.id,1}.wndows.indexes(w,1) -1);%
-                tb =  dt*(DTB{P.isshown.id,1}.wndows.indexes(w,2) -1);%
+                ta = dt*( DTB__windows__indexes{P.isshown.id,1}(w,1) -1);
+                tb = dt*(DTB__windows__indexes{P.isshown.id,1}(w,2) -1);
                 if ( (xmi<ta) && (tb<xma) ) || ( (ta<xmi) && (xma<tb) )
                     %P.isshown.accepted_windows
-                    DTB{P.isshown.id,1}.wndows.is_ok(w)=0;
+                    DTB__windows__is_ok{P.isshown.id,1}(w)=0;
                 end
             end
             Graphic_update_data(0);
@@ -2873,16 +3432,16 @@ fprintf('[READY !]\n');
     end
     function CM_data_resume_win(~,~,~)
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
-        if DTB{P.isshown.id,1}.status==1
+        if DTB__status(P.isshown.id,1)==1
             [xmi,xma] = getxrange();% sec
             
             dt = 1/sampling_frequences(P.isshown.id);
-            n_of_windows = DTB{P.isshown.id,1}.wndows.number;
+            n_of_windows = DTB__windows__number(P.isshown.id,1);
             for w = 1:n_of_windows
-                ta = dt*(DTB{P.isshown.id,1}.wndows.indexes(w,1) -1);
-                tb =  dt*(DTB{P.isshown.id,1}.wndows.indexes(w,2) -1);
+                ta = dt*(DTB__windows__indexes{P.isshown.id,1}(w,1) -1);
+                tb = dt*(DTB__windows__indexes{P.isshown.id,1}(w,2) -1);
                 if ( (xmi<ta) && (tb<xma) ) || ( (ta<xmi) && (xma<tb) )
-                    DTB{P.isshown.id,1}.wndows.is_ok(w)=1;
+                    DTB__windows__is_ok{P.isshown.id,1}(w)=1;
                 end
             end
             Graphic_update_data(0);
@@ -2907,14 +3466,14 @@ fprintf('[READY !]\n');
     %
     function CM_spectrum_delete_win(~,~,~)
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
-        if DTB{P.isshown.id,1}.status==1
+        if DTB__status(P.isshown.id,1)==1
             [xmi,xma] = getxrange();% sec
-            n_of_windows = DTB{P.isshown.id,1}.wndows.number;
+            n_of_windows = DTB__windows__number(P.isshown.id,1);
             for w = 1:n_of_windows
                 ta = w-0.5;
                 tb =  w+0.5;
                 if ( (xmi<ta) && (tb<xma) ) || ( (ta<xmi) && (xma<tb) )
-                    DTB{P.isshown.id,1}.wndows.is_ok(w)=0;
+                    DTB__windows__is_ok{P.isshown.id,1}(w)=0;
                 end
             end
             Graphic_update_data(0);
@@ -2923,14 +3482,14 @@ fprintf('[READY !]\n');
     end
     function CM_spectrum_resume_win(~,~,~)
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
-        if DTB{P.isshown.id,1}.status==1
+        if DTB__status(P.isshown.id,1)==1
             [xmi,xma] = getxrange();% sec
-            n_of_windows = DTB{P.isshown.id,1}.wndows.number;
+            n_of_windows = DTB__windows__number(P.isshown.id,1);
             for w = 1:n_of_windows
                 ta = w-0.5;
                 tb =  w+0.5;
                 if ( (xmi<ta) && (tb<xma) ) || ( (ta<xmi) && (xma<tb) )
-                    DTB{P.isshown.id,1}.wndows.is_ok(w)=1;
+                    DTB__windows__is_ok{P.isshown.id,1}(w)=1;
                 end
             end
             Graphic_update_data(0);
@@ -2938,7 +3497,7 @@ fprintf('[READY !]\n');
         end
     end
     %
-    function CM_spectrum_delete_curves(~,~,~)% FIX to implement inside
+    function CM_spectrum_delete_curves(~,~,~)
         axid = 0;
         if gca==hAx_speV
             axid = 1;
@@ -2953,7 +3512,7 @@ fprintf('[READY !]\n');
             delete_curve_set(axid);
         end
     end
-    function CM_spectrum_resume_curves(~,~,~)% FIX to implement inside
+    function CM_spectrum_resume_curves(~,~,~)
         axid = 0;
         if gca==hAx_speV
             axid = 1;
@@ -2989,7 +3548,7 @@ fprintf('[READY !]\n');
             else
                 ii = P.isshown.id;
                 Imin=1;
-                Imax=DTB{ii,1}.wndows.number;
+                Imax=DTB__windows__number(ii,1);
             end
             P.TAB_Computations.hori_axis_limits__windows = Get_Range_Callback(Imin,Imax,'Windows ID');
         end
@@ -3000,9 +3559,9 @@ fprintf('[READY !]\n');
                 Fmax = P.TAB_Computations.hori_axis_limits__frequence(2);
             else
                 ii = P.isshown.id;
-                df = DTB{ii,1}.section.Frequency_Vector(3);
-                Fmin = df*(DTB{ii,1}.section.Frequency_Vector(1)-1); 
-                Fmax = df*(DTB{ii,1}.section.Frequency_Vector(2)-1);
+                df = DTB__section__Frequency_Vector{ii,1}(3);
+                Fmin = df*(DTB__section__Frequency_Vector{ii,1}(1)-1); 
+                Fmax = df*(DTB__section__Frequency_Vector{ii,1}(2)-1);
             end
             P.TAB_Computations.hori_axis_limits__frequence = Get_Range_Callback(Fmin,Fmax,'Freq. Range');
         end
@@ -3027,9 +3586,9 @@ fprintf('[READY !]\n');
                 Fmax = P.TAB_Computations.hori_axis_limits__angleshv(2);
             else
                 ii = P.isshown.id;
-                df = DTB{ii,1}.section.Frequency_Vector(3);
-                Fmin = df*(DTB{ii,1}.section.Frequency_Vector(1)-1); 
-                Fmax = df*(DTB{ii,1}.section.Frequency_Vector(2)-1);
+                df = DTB__section__Frequency_Vector{ii,1}(3);
+                Fmin = df*(DTB__section__Frequency_Vector{ii,1}(1)-1); 
+                Fmax = df*(DTB__section__Frequency_Vector{ii,1}(2)-1);
             end
             [Arange,Frange] = Get_Range_X2_Callback(Amin,Amax,Fmin,Fmax,'Range','Angle','Freq.');
             P.TAB_Computations.hori_axis_limits__angles   = Arange;
@@ -3067,8 +3626,8 @@ fprintf('[READY !]\n');
                 Imax = P.TAB_Computations.vert_axis_limits__windows(2);
             else
                 ii = P.isshown.id;
-                Imin=DTB{ii,1}.section.Min_Freq;
-                Imax=DTB{ii,1}.section.Max_Freq;
+                Imin=DTB__section__Min_Freq(ii,1);
+                Imax=DTB__section__Max_Freq(ii,1);
             end
             P.TAB_Computations.vert_axis_limits__windows = Get_Range_Callback(Imin,Imax,'Frequency [Hz]');
         end
@@ -3080,8 +3639,8 @@ fprintf('[READY !]\n');
             else
                 Amin = 0; 
                 ii = P.isshown.id;
-                if ~isnan(DTB{ii,1}.hvsr.auto_main_peak_amplitude)
-                    Amax = DTB{ii,1}.hvsr.auto_main_peak_amplitude;
+                if ~isnan(DTB__hvsr__auto_main_peak_amplitude(ii,1))
+                    Amax = DTB__hvsr__auto_main_peak_amplitude(ii,1);
                 else
                     Amax = 15;
                 end
@@ -3095,8 +3654,8 @@ fprintf('[READY !]\n');
                 Fmax = P.TAB_Computations.vert_axis_limits__angles(2);
             else
                 ii = P.isshown.id;
-                Fmin=DTB{ii,1}.section.Min_Freq;
-                Fmax=DTB{ii,1}.section.Max_Freq;
+                Fmin=DTB__section__Min_Freq(ii,1);
+                Fmax=DTB__section__Max_Freq(ii,1);
             end
             P.TAB_Computations.vert_axis_limits__angles = Get_Range_Callback(Fmin,Fmax,'Frequency [Hz]');
         end
@@ -3107,8 +3666,8 @@ fprintf('[READY !]\n');
                 Fmax = P.TAB_Computations.vert_axis_limits__angles(2);
             else
                 ii = P.isshown.id;
-                Fmin=DTB{ii,1}.section.Min_Freq;
-                Fmax=DTB{ii,1}.section.Max_Freq;
+                Fmin=DTB__section__Min_Freq(ii,1);
+                Fmax=DTB__section__Max_Freq(ii,1);
             end
             if ~isempty(P.TAB_Computations.vert_axis_limits__angleshv)
                 Amin = P.TAB_Computations.vert_axis_limits__angleshv(1);
@@ -3116,8 +3675,8 @@ fprintf('[READY !]\n');
             else
                 Amin = 0; 
                 ii = P.isshown.id;
-                if ~isnan(DTB{ii,1}.hvsr.auto_main_peak_amplitude)
-                    Amax = DTB{ii,1}.hvsr.auto_main_peak_amplitude;
+                if ~isnan(DTB__hvsr__auto_main_peak_amplitude(ii,1))
+                    Amax = DTB__hvsr__auto_main_peak_amplitude(ii,1);
                 else
                     Amax = 15;
                 end
@@ -3214,7 +3773,7 @@ fprintf('[READY !]\n');
     function CB_TAB_update_Computations(~,~,~)
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
         %
-        if DTB{P.isshown.id,1}.wndows.number==0 % prevent computing when not windowed 
+        if DTB__windows__number(P.isshown.id,1)==0 % prevent computing when not windowed 
             set(T2_PA_HV,              'Enable','off')
             set(hT3_PA_edit_fmin,      'Enable','off')
             set(hT3_PA_edit_fmax,      'Enable','off')
@@ -3317,9 +3876,9 @@ fprintf('[READY !]\n');
         %
         L = str2double(strg);
         LL=2^nextpow2(L);
-        if ~isempty(DTB{dat_id,1}.wndows.info)
-            if DTB{dat_id,1}.wndows.info(2)>0
-                pad0 = 2^nextpow2(DTB{dat_id,1}.wndows.info(2));  
+        if ~isempty(DTB__windows__info)
+            if DTB__windows__info(dat_id,2)>0
+                pad0 = 2^nextpow2(DTB__windows__info(dat_id,2));  
                 if LL>pad0
                     set(T3_P1_wpadto,'string',num2str(LL));
                     return;
@@ -3335,6 +3894,7 @@ fprintf('[READY !]\n');
     end
 %% TAB-3, Panel-D
     function CB_spectrum_selection(~,event)%(source,event)
+        is_drawing();
         %        display(['Previous: ' event.OldValue.String]);
         %        display(['Current: ' event.NewValue.String]);
         %        display('------------------');
@@ -3390,30 +3950,31 @@ fprintf('[READY !]\n');
     end
     function CB_spectrum_of_windows(~,~,~)
         Graphic_update_spectrum_of_windows(0);
+         is_done();
     end
-%     function CB_contouring_of_windows(~,~,~)
-%         Graphic_update_contour_of_windows(0);
-%     end
     function CB_hvsr_of_windows(~,~,~)
         Graphic_update_hvsr_of_windows(0);
+         is_done();
     end
-%     function CB_hvsr_contouring_of_windows(~,~,~)
-%         Graphic_update_hvsr_contouring_of_windows(0);
-%     end
     function CB_hvsr_average_curve(~,~,~)
         Graphic_update_hvsr_average_curve(0);
+         is_done();
     end
     function CB_hvsr_all_windows_curves(~,~,~)
         Graphic_update_hvsr_all_curves(0);
+         is_done();
     end
     function CB_hvsr_H_V_Components_Compare(~,~,~)
         Graphic_update_hvsr_H_V_Compare(0);
+         is_done();
     end
     function CB_hvsr_180_windows(~,~,~)
         Graphic_update_hvsr_180_windows(0);
+         is_done();
     end
     function CB_hvsr_180_curves(~,~,~)
         Graphic_update_hvsr_180_curves(0);
+         is_done();
     end
     function CB_Update_Computation_caxis(~,~,~)
         %fprintf('CB_Update_Computation_caxis\n')
@@ -3433,7 +3994,6 @@ fprintf('[READY !]\n');
             case 8; P.TAB_Computations.custom_caxis_directional  = rclr;% directional
         end
         Graphic_update_spectrums(0);
-        
     end
     function CB_Reset_Computation_caxis(~,~,~)
         %fprintf('CB_Reset_Computation_caxis\n')
@@ -3466,7 +4026,11 @@ fprintf('[READY !]\n');
         if isempty(SURVEYS); return; end
         Np = size(receiver_locations,1);
         recta_kind = 0;
-        [xx,yy] = ginput(2);
+        if Matlab_Release_num>2018.1% Solve ginput issuewith R2018a and above
+            [xx,yy] = sam2018b_ginput(2, hAx_main_geo);
+        else
+            [xx,yy] = ginput(2, hAx_main_geo);
+        end
         if( (xx(1)==xx(2)) && (yy(1)==yy(2))); return; end
         dummy_ids = zeros(Np,3);
         dummy_line    = [xx,yy];
@@ -3615,7 +4179,7 @@ fprintf('[READY !]\n');
         if isempty(SURVEYS); return; end
         status = 0;
         for ss=1:size(SURVEYS,1)
-            if DTB{ss,1}.wndows.number~=0; status = 1; break; end
+            if DTB__windows__number(ss,1)~=0; status = 1; break; end
         end
         if status == 0; return; end
         %
@@ -3660,11 +4224,11 @@ fprintf('[READY !]\n');
     %    
     function CB_hAx_2Dview_freq_DOWN(~,~,~)
         if P.isshown.id ==0; return; end
-        if DTB{P.isshown.id,1}.wndows.number==0; return; end
-        if size(DTB{P.isshown.id,1}.hvsr.curve,1) < 1; return; end 
+        if DTB__windows__number(P.isshown.id,1)==0; return; end
+        if size(DTB__hvsr__curve{P.isshown.id,1},1) < 1; return; end 
         %
         ii=P.isshown.id;
-        Ndat = size(DTB{ii,1}.hvsr.curve,1);
+        Ndat = size(DTB__hvsr__curve{ii,1},1);
         val = P.Flags.View_2D_contour_freq_slice_id;
         switch(P.Flags.View_2D_contour_freq_slice_id)
             case 0; val = Ndat;
@@ -3672,17 +4236,17 @@ fprintf('[READY !]\n');
             otherwise; val = val -1;
         end
         P.Flags.View_2D_contour_freq_slice_id = val;
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        currentf = df*(val-1);%DTB{ii,1}.section.Frequency_Vector(1, val); %% CHECK AFTER CHANGE
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        currentf = df*(val-1);
         set(T4_current_freq,'String',num2str(currentf))
         S2Dview_hvsr_slice_at_specific_frequence();       
     end
     function CB_hAx_2Dview_freq_UP(~,~,~)
         if P.isshown.id ==0; return; end
-        if DTB{P.isshown.id,1}.wndows.number==0; return; end
-        if size(DTB{P.isshown.id,1}.hvsr.curve,1) < 1; return; end 
+        if DTB__windows__number(P.isshown.id,1)==0; return; end
+        if size(DTB__hvsr__curve{P.isshown.id,1},1) < 1; return; end 
         ii=P.isshown.id;
-        Ndat = size(DTB{ii,1}.hvsr.curve,1);
+        Ndat = size(DTB__hvsr__curve{ii,1},1);
         %
         val = P.Flags.View_2D_contour_freq_slice_id;
         switch(P.Flags.View_2D_contour_freq_slice_id)
@@ -3691,25 +4255,22 @@ fprintf('[READY !]\n');
             otherwise; val = val +1;
         end
         P.Flags.View_2D_contour_freq_slice_id = val;
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        currentf = df*(val-1);%DTB{ii,1}.section.Frequency_Vector(1, val); %% CHECK AFTER CHANGE
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        currentf = df*(val-1);
         set(T4_current_freq,'String',num2str(currentf))
 
         S2Dview_hvsr_slice_at_specific_frequence();
     end
     function CB_hAx_2Dview_freq_GOTO(~,~,~)
         if P.isshown.id ==0; return; end
-        if DTB{P.isshown.id,1}.wndows.number==0; return; end
-        if size(DTB{P.isshown.id,1}.hvsr.curve,1) < 1; return; end 
+        if DTB__windows__number(P.isshown.id,1)==0; return; end
+        if size(DTB__hvsr__curve{P.isshown.id,1},1) < 1; return; end 
         %
         ii=P.isshown.id;
-        Ndat = size(DTB{ii,1}.hvsr.curve,1);
-        %DTB{c,1}.section.Frequency_Vector
-        %currentf =DTB{ii,1}.hvsr.curve( P.Flags.View_2D_contour_freq_slice_id ,1);
-        %currentf = DTB{ii,1}.section.Frequency_Vector(1, P.Flags.View_2D_contour_freq_slice_id);
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        currentf = df*(P.Flags.View_2D_contour_freq_slice_id-1);%DTB{ii,1}.section.Frequency_Vector(1, val); %% CHECK AFTER CHANGE
-        fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
+        Ndat = size(DTB__hvsr__curve{ii,1},1);
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        currentf = df*(P.Flags.View_2D_contour_freq_slice_id-1);
+        fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
         
         prompt = {'Select approximate Frequency'};
         def = {num2str(currentf)};
@@ -3718,7 +4279,7 @@ fprintf('[READY !]\n');
             val = str2double(answer{1});
             mindiff = min( abs(fvec-val) );
             for jj=1:Ndat
-                currentf = fvec(jj); %DTB{ii,1}.section.Frequency_Vector(1,jj);
+                currentf = fvec(jj); 
                 if( abs(currentf-val)<=mindiff   )
                     P.Flags.View_2D_contour_freq_slice_id = jj;
                     break
@@ -3816,7 +4377,7 @@ fprintf('[READY !]\n');
         if isempty(SURVEYS); return; end
         status = 0;
         for ss=1:size(SURVEYS,1)
-            if DTB{ss,1}.wndows.number~=0; status = 1; break; end
+            if DTB__windows__number(ss,1)~=0; status = 1; break; end
         end
         if status == 0; return; end
         %
@@ -3838,7 +4399,7 @@ fprintf('[READY !]\n');
     end
 %% TAB 5 ====================== 3D Views 
     function CB_TAB_create_reference_scales(~,~,~)
-        if ~isempty(DTB)
+        if ~isempty(SURVEYS)
             %% Generate a reference Frequence scale
             %fprintf('call to: CB_TAB_create_reference_scales\n')
             %fprintf('            will prepare common reference scales for 3D-view\n')
@@ -3847,7 +4408,7 @@ fprintf('[READY !]\n');
             %
             tempfmin = 1e30;
             for s=1:Ndat%investigate all surveys
-                temp=DTB{s,1}.section.Min_Freq;
+                temp=DTB__section__Min_Freq(s,1);
                 if ~isempty(temp)
                     if temp<tempfmin
                         tempfmin = temp;
@@ -3856,7 +4417,7 @@ fprintf('[READY !]\n');
             end
             tempfmax = -1e30;
             for s=1:Ndat%investigate all surveys
-                temp=DTB{s,1}.section.Max_Freq;
+                temp=DTB__section__Max_Freq(s,1);
                 if ~isempty(temp)
                     if temp>tempfmax
                         tempfmax = temp;
@@ -3874,18 +4435,18 @@ fprintf('[READY !]\n');
                 mindf = 1e30;
                 mindf_found = 0;
                 for s=2:Ndat%investigate all surveys
-                    if ~isempty(DTB{s,1}.section.Frequency_Vector)
-                        temp = DTB{s,1}.section.Frequency_Vector(3);%DTB{1,1}.section.Frequency_Vector(2)-DTB{1,1}.section.Frequency_Vector(1);
+                    if ~isempty(DTB__section__Frequency_Vector{s,1})
+                        temp = DTB__section__Frequency_Vector{s,1}(3);
                         if temp<mindf
                             mindf = temp;
                             mindf_found = 1;
                         end
                     end
                 end
-                
+
                 if mindf_found == 1
                     %P.Reference_Freq_scale= fmin:mindf:fmax;
-                    % substitute reference scale with a pre-defined, adjustable in future (FIX THIS)
+                    % substitute reference scale with a pre-defined, adjustable in future (DEVELOPMENT)
                     % simpler version
                     %
                     %         A =   0.1 : 0.1 :   0.9;
@@ -3915,11 +4476,11 @@ fprintf('[READY !]\n');
                     %% Compute Global amplitude range
                     Amin =  10e16;
                     Amax = -10e16;
-                    for ii = 1:size(DTB,1)
-                        if ~isnan(DTB{ii,1}.hvsr.user_main_peak_amplitude)
-                            Amp = DTB{ii,1}.hvsr.user_main_peak_amplitude;
+                    for ii = 1:size(DTB__status,1)
+                        if ~isnan(DTB__hvsr__user_main_peak_amplitude(ii,1))
+                            Amp = DTB__hvsr__user_main_peak_amplitude(ii,1);
                         else
-                            Amp = DTB{ii,1}.hvsr.auto_main_peak_amplitude;
+                            Amp = DTB__hvsr__auto_main_peak_amplitude(ii,1);
                         end
                         if Amax<Amp
                             Amax = Amp;
@@ -4019,16 +4580,19 @@ fprintf('[READY !]\n');
     end
 %% TAB-6 ====================== Ibs-von Seht & Wolemberg
     function CB_TAB_update_IBSeW_statistics(~,~,~)
-        if ~isempty(DTB)
+        if ~isempty(SURVEYS)
             %fprintf('call to: CB_TAB_update_IBSeW_statistics\n')
+            is_busy();
             Update_IBSeW_statistics();
+            is_drawing();
             Graphics_IBSeW_plot_regression(0);
+            is_done();
         end
     end
     function Update_IBSeW_statistics()
         clc
         % get known bedrock and corresponding F0
-        Nhv = size(DTB,1);
+        Nhv = size(DTB__status,1);
         F0_list_known = zeros(Nhv,1);
         HH_list_known = zeros(Nhv,1);% bedrock depths
         F0_list_UNknown = zeros(Nhv,1);
@@ -4037,28 +4601,28 @@ fprintf('[READY !]\n');
         cu=0;
         used_hv = 0;
         for d = 1:Nhv% retrieve a list of f0-H pairs
-            if ~isnan(DTB{d,1}.hvsr.user_main_peak_frequence)
-                Fo = DTB{d,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
+            if ~isnan(DTB__hvsr__user_main_peak_frequence(d,1))
+                Fo = DTB__hvsr__user_main_peak_frequence(d,1);% user selection is always preferred
             else
-                Fo = DTB{d,1}.hvsr.auto_main_peak_frequence;
+                Fo = DTB__hvsr__auto_main_peak_frequence(d,1);
             end
             con1 = ~isnan(Fo);% main resonant frequence exist
-            con2 = strcmp(DTB{d,1}.well.bedrock_depth_source,'lithology in file');% bedrock depth from file
-            con3 = strcmp(DTB{d,1}.well.bedrock_depth_source,'manual') && (DTB{d,1}.well.bedrock_depth__KNOWN>0);% bedrock depth not from file, but manually set
+            con2 = strcmp(DTB__well__bedrock_depth_source{d,1},'lithology in file');% bedrock depth from file
+            con3 = strcmp(DTB__well__bedrock_depth_source{d,1},'manual') && (DTB__well__bedrock_depth__KNOWN{d,1}>0);% bedrock depth not from file, but manually set
             % ----------------
-            DTB{d,1}.well.bedrock_depth__COMPUTED    = DTB{d,1}.well.bedrock_depth__KNOWN;% copy computed bedrock depths
-            DTB{d,1}.well.bedrock_depth__IBS1999     = DTB{d,1}.well.bedrock_depth__KNOWN;
-            DTB{d,1}.well.bedrock_depth__PAROLAI2002 = DTB{d,1}.well.bedrock_depth__KNOWN;
-            DTB{d,1}.well.bedrock_depth__HINZEN2004  = DTB{d,1}.well.bedrock_depth__KNOWN;
+            DTB__well__bedrock_depth__COMPUTED{d,1}    = DTB__well__bedrock_depth__KNOWN{d,1};% copy computed bedrock depths
+            DTB__well__bedrock_depth__IBS1999{d,1}     = DTB__well__bedrock_depth__KNOWN{d,1};
+            DTB__well__bedrock_depth__PAROLAI2002{d,1} = DTB__well__bedrock_depth__KNOWN{d,1};
+            DTB__well__bedrock_depth__HINZEN2004{d,1}  = DTB__well__bedrock_depth__KNOWN{d,1};
             % ---------------
-            if DTB{d,1}.status ~= 2% is excluded: ie will not partecipate i H-F0 pairs
+            if DTB__status(d,1) ~= 2% is excluded: ie will not partecipate i H-F0 pairs
                 used_hv = used_hv +1;
                 if  con1% F0 exist
                     if  (con2 || con3)
                         % depth is known
                         cc=cc+1;
                         F0_list_known(cc) = Fo;
-                        HH_list_known(cc) = DTB{d,1}.well.bedrock_depth__KNOWN;% bedrock depths  
+                        HH_list_known(cc) = DTB__well__bedrock_depth__KNOWN{d,1};% bedrock depths  
                     else
                         % depth is unknown
                         cu=cu+1;
@@ -4085,7 +4649,7 @@ fprintf('[READY !]\n');
                 [HH_list_UNknown] = Pfiles__Ibs_Von_Seht_Like__HfromF(F0_list_UNknown,aval,bval);
                 for ii = 1:cu
                     idd = ID_list_UNknown(ii);
-                    DTB{idd,1}.well.bedrock_depth__COMPUTED = HH_list_UNknown(ii);% copy computed bedrock depths
+                    DTB__well__bedrock_depth__COMPUTED{idd,1} = HH_list_UNknown(ii);% copy computed bedrock depths
                 end
             end
             %% Ibs-von Seht and Wohlenberg 1999
@@ -4094,7 +4658,7 @@ fprintf('[READY !]\n');
             [THH1] = Pfiles__Ibs_Von_Seht_Like__HfromF(F0_list_UNknown,aval,bval);
             for ii = 1:cu
                 idd = ID_list_UNknown(ii);
-                DTB{idd,1}.well.bedrock_depth__IBS1999 = THH1(ii);
+                DTB__well__bedrock_depth__IBS1999{idd,1} = THH1(ii);
             end
             %% Parolai et al. (2002)	108.0	?1.551
             aval = P.regression_Parolai_2002(1);
@@ -4102,7 +4666,7 @@ fprintf('[READY !]\n');
             [THH2] = Pfiles__Ibs_Von_Seht_Like__HfromF(F0_list_UNknown,aval,bval);
             for ii = 1:cu
                 idd = ID_list_UNknown(ii);
-                DTB{idd,1}.well.bedrock_depth__PAROLAI2002 = THH2(ii);
+                DTB__well__bedrock_depth__PAROLAI2002{idd,1} = THH2(ii);
             end
             %% Hinzen et al. (2004)	137.0	?1.190
             aval = P.regression_Hinzen_2004(1);
@@ -4110,7 +4674,7 @@ fprintf('[READY !]\n');
             [THH3] = Pfiles__Ibs_Von_Seht_Like__HfromF(F0_list_UNknown,aval,bval);
             for ii = 1:cu
                 idd = ID_list_UNknown(ii);
-                DTB{idd,1}.well.bedrock_depth__HINZEN2004 = THH3(ii);
+                DTB__well__bedrock_depth__HINZEN2004{idd,1} = THH3(ii);
             end
             %
             %Graphics_IBSeW_plot_regression(0);% plot distributions
@@ -4130,48 +4694,60 @@ fprintf('[READY !]\n');
         end
     end
     function CB_manual_bedrock_depth(~,~,~)
+        is_busy();
         %fprintf('call:CB_manual_bedrock_depth\n')        
-        DTB{P.isshown.id,1}.well.bedrock_depth__KNOWN = str2double( get(T6_PA_BedrockDepth,'String') );
-        DTB{P.isshown.id,1}.well.bedrock_depth_source = 'manual'; 
+        DTB__well__bedrock_depth__KNOWN{P.isshown.id,1} = str2double( get(T6_PA_BedrockDepth,'String') );
+        DTB__well__bedrock_depth_source{P.isshown.id,1} = 'manual'; 
         %
         Update_IBSeW_statistics();
         if P.Flags.IBSeW_successful
+            is_drawing();
             Graphics_IBSeW_plot_regression(0);
             Graphics_IBSeW_plot_depths(0);
         end
         Update_wells_info();
+        is_done();
     end
-    function CB_reset_bedrock_depth(~,~,~)
+    function CB_reset_bedrock_depth(~,~,~)     
         if P.isshown.id==0; return; end
+        is_busy();
         %fprintf('call:CB_reset_bedrock_depth\n')        
-        DTB{P.isshown.id,1}.well.well_id              = 0;
-        DTB{P.isshown.id,1}.well.bedrock_depth_source = 'n.a';
-        DTB{P.isshown.id,1}.well.bedrock_depth__KNOWN = 'n.a.';
+        DTB__well__well_id(P.isshown.id,1) = 0;
+        DTB__well__bedrock_depth_source{P.isshown.id,1} = 'n.a';
+        DTB__well__bedrock_depth__KNOWN{P.isshown.id,1} = 'n.a.';
         %
         Update_IBSeW_statistics();
         if P.Flags.IBSeW_successful
+            is_drawing();
             Graphics_IBSeW_plot_regression(0);
             Graphics_IBSeW_plot_depths(0);
         end
         Update_wells_info();
+        is_done();
     end
     function CB_TAB_IBSeW_Update(~,~,~)
-        if ~isempty(DTB)
+        if ~isempty(SURVEYS)
             %fprintf('call to: CB_TAB_update_IBSeW_statistics\n')
+            is_busy();
             Update_IBSeW_statistics()
             if P.Flags.IBSeW_successful    
+                is_drawing();
                 Graphics_IBSeW_plot_regression(0);
                 Graphics_IBSeW_plot_depths(0)
             end
+            is_done();
         end
     end
     function CB_regression(~,~,~)
+        is_drawing();
         Graphics_IBSeW_plot_regression(0);
         if P.Flags.IBSeW_successful
             Graphics_IBSeW_plot_depths(0);
         end
+        is_done();
     end
     function CB_IVSeW_surfaces_discretization(~,~,~)
+        is_drawing();
         prompt = {'X','Y'};
         def = {num2str(P.TAB_IBSeW_Discretization(1)), num2str(P.TAB_IBSeW_Discretization(2))};
         answer = inputdlg(prompt,'Set discretization',1,def);
@@ -4186,6 +4762,7 @@ fprintf('[READY !]\n');
             end
         end
        Graphics_IBSeW_plot_depths(0);
+       is_done();
     end
 %% EXTRA ======================
     function CB_figure_all_hvsr(~,~,~)
@@ -4196,10 +4773,10 @@ fprintf('[READY !]\n');
         nplots = 0;
         lgnd = cell(Ncrv,1);
         for ii = 1:Ncrv
-            if ~isempty(DTB{ii,1}.section.Frequency_Vector)% Fvec must be setted
-                df = DTB{ii,1}.section.Frequency_Vector(3);
-                Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
-                HV = DTB{ii,1}.hvsr.curve;
+            if ~isempty(DTB__section__Frequency_Vector{ii,1})% Fvec must be setted
+                df = DTB__section__Frequency_Vector{ii,1}(3);
+                Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
+                HV = DTB__hvsr__curve{ii,1};
                 %
                 clr = colrs(ii,:);
                 if xmode==0
@@ -4267,138 +4844,144 @@ fprintf('[READY !]\n');
     end
     function INIT_DATA_RELATED()
         Nsurveys = size(SURVEYS,1);
-        DTB = cell(Nsurveys,1);
         %
-        %%   DTB{s,1}.status
-        %%   DTB{}.wndows.
-        T_wndows.width_sec = NaN;%#ok
-        T_windows.number = 0;% filled runtime
-        T_windows.number_fft=-1;% filled runtime,   accounts for change of windows
-        T_windows.indexes = [];% filled runtime
-        T_windows.is_ok = [];% filled runtime
-        T_windows.winv = [];% filled runtime
-        T_windows.wine = [];% filled runtime
-        T_windows.winn = [];% filled runtime
-        T_windows.fftv = [];% filled runtime
-        T_windows.ffte = [];% filled runtime
-        T_windows.fftn = [];% filled runtime
-        T_windows.info = [0 0 0 0 0 0];% filled runtime
-        %%   DTB{}.elab_parameters.
-        T_elab_parameters.status = 'Not confirmed';% used runtime
-        T_elab_parameters.hvsr_strategy = get(T2_PA_HV,'Value');% picked from interface
-        T_elab_parameters.hvsr_freq_min = default_values.frequence_min;
-        T_elab_parameters.hvsr_freq_max = default_values.frequence_max;
-        T_elab_parameters.windows_width = default_values.window_width;
-        T_elab_parameters.windows_overlap = default_values.window_overlap_pc;
-        T_elab_parameters.windows_tapering = default_values.tap_percent;
-        T_elab_parameters.windows_sta_vs_lta = default_values.sta_lta_ratio;
-        T_elab_parameters.windows_pad = default_values.pad_length;
-        T_elab_parameters.smoothing_strategy = get(T3_PA_wsmooth_strategy,'VAlue');
-        T_elab_parameters.smoothing_slider_val = get(T3_PD_smooth_slider,'Value');
+        %%   DTB__status
+        DTB__status = ones(Nsurveys,1);%                                   v2.0.0   
+        DTB__elaboration_progress = zeros(Nsurveys,1);%                                   v2.0.0
+        %%   DTB__windows.
+        DTB__windows__info = zeros(Nsurveys,6);%                                   v2.0.0 
+        DTB__windows__width_sec = ones(Nsurveys,1);%                       v2.0.0
+        DTB__windows__number = ones(Nsurveys,1);%                          v2.0.0
+        DTB__windows__number_fft = -ones(Nsurveys,1);%                     v2.0.0
+        DTB__windows__indexes = cell(Nsurveys,1);%                         v2.0.0
+        DTB__windows__is_ok   = cell(Nsurveys,1);%                         v2.0.0
+        DTB__windows__winv = cell(Nsurveys,1);%                            v2.0.0
+        DTB__windows__wine = cell(Nsurveys,1);%                            v2.0.0
+        DTB__windows__winn = cell(Nsurveys,1);%                            v2.0.0
+        DTB__windows__fftv = cell(Nsurveys,1);%                            v2.0.0
+        DTB__windows__ffte = cell(Nsurveys,1);%                            v2.0.0
+        DTB__windows__fftn = cell(Nsurveys,1);%                            v2.0.0
+        %%   DTB__elab_parameters.
+        DTB__elab_parameters__status = cell(Nsurveys,1);%       Filled later
+        DTB__elab_parameters__hvsr_strategy = get(T2_PA_HV,'Value') *ones(Nsurveys,1);% picked from interface
+        DTB__elab_parameters__hvsr_freq_min = default_values.frequence_min *ones(Nsurveys,1);
+        DTB__elab_parameters__hvsr_freq_max = default_values.frequence_max *ones(Nsurveys,1);
+        DTB__elab_parameters__windows_width = default_values.window_width *ones(Nsurveys,1);
+        DTB__elab_parameters__windows_overlap = default_values.window_overlap_pc *ones(Nsurveys,1);
+        DTB__elab_parameters__windows_tapering = default_values.tap_percent *ones(Nsurveys,1);
+        DTB__elab_parameters__windows_sta_vs_lta = default_values.sta_lta_ratio *ones(Nsurveys,1);
+        DTB__elab_parameters__windows_pad = cell(Nsurveys,1);
+        DTB__elab_parameters__smoothing_strategy = get(T3_PA_wsmooth_strategy,'VAlue') *ones(Nsurveys,1);
+        DTB__elab_parameters__smoothing_slider_val = get(T3_PD_smooth_slider,'Value') *ones(Nsurveys,1);
         %
         % filter
-        T_elab_parameters.filter_id    = 1;
-        T_elab_parameters.filter_name  = 'none';
-        T_elab_parameters.filter_order = NaN;%
-        T_elab_parameters.filterFc1    = NaN;
-        T_elab_parameters.filterFc2    = NaN;
-        T_elab_parameters.data_to_use  = 0;
-        %%   DTB{}.section.
-        T_section.Min_Freq = 0.2;% filled runtime
-        T_section.Max_Freq = 100;% filled runtime
-        T_section.Frequency_Vector = [];% filled runtime
+        DTB__elab_parameters__filter_id    = ones(Nsurveys,1);
+        DTB__elab_parameters__filter_name  = cell(Nsurveys,1);%       Filled later
+        DTB__elab_parameters__filter_order = NaN*ones(Nsurveys,1);
+        DTB__elab_parameters__filterFc1    = NaN*ones(Nsurveys,1);
+        DTB__elab_parameters__filterFc2    = NaN*ones(Nsurveys,1);
+        DTB__elab_parameters__data_to_use  = zeros(Nsurveys,1);
+        DTB__elab_parameters__THEfilter = cell(Nsurveys,1);
+        %%   DTB__section.
+        DTB__section__Min_Freq = 0.2 * ones(Nsurveys,1);
+        DTB__section__Max_Freq = 100 * ones(Nsurveys,1);
+        DTB__section__Frequency_Vector = cell(Nsurveys,1);
         %
-        T_section.V_windows = [];% filled runtime
-        T_section.E_windows = [];% filled runtime
-        T_section.N_windows = [];% filled runtime
+        DTB__section__V_windows = cell(Nsurveys,1);
+        DTB__section__E_windows = cell(Nsurveys,1);
+        DTB__section__N_windows = cell(Nsurveys,1);
         %
-        T_section.Average_V  = [];% filled runtime
-        T_section.Average_E = [];% filled runtime
-        T_section.Average_N = [];% filled runtime                    << compute_single_hv(dat_id)
+        DTB__section__Average_V = cell(Nsurveys,1);
+        DTB__section__Average_E = cell(Nsurveys,1);
+        DTB__section__Average_N = cell(Nsurveys,1);% << compute_single_hv(dat_id)
         %
-        T_section.HV_windows = [];% filled runtime
-        T_section.EV_windows = [];% filled runtime
-        T_section.NV_windows = [];% filled runtime
-        %%   DTB{}.hvsr.
-        T_hvsr.curve_full = [];
-        %T_hvsr.error_full = [];
-        T_hvsr.confidence95_full = [];
-        T_hvsr.curve_EV_full = [];
-        T_hvsr.curve_NV_full = [];
+        DTB__section__HV_windows = cell(Nsurveys,1);
+        DTB__section__EV_windows = cell(Nsurveys,1);
+        DTB__section__NV_windows = cell(Nsurveys,1);
+        %%   DTB__hvsr.
+        DTB__hvsr__curve_full = cell(Nsurveys,1);
+        %DTB{s,1}.hvsr.error_full = cell(Nsurveys,1);
+        DTB__hvsr__confidence95_full = cell(Nsurveys,1);
+        DTB__hvsr__curve_EV_full = cell(Nsurveys,1);
+        DTB__hvsr__curve_NV_full = cell(Nsurveys,1);
         %
-        T_hvsr.EV_all_windows = [];
-        T_hvsr.NV_all_windows = [];
-        T_hvsr.HV_all_windows = [];
+        DTB__hvsr__EV_all_windows = cell(Nsurveys,1);
+        DTB__hvsr__NV_all_windows = cell(Nsurveys,1);
+        DTB__hvsr__HV_all_windows = cell(Nsurveys,1);
         %
-        T_hvsr.curve = [];
-        %T_hvsr.error = [];
-        T_hvsr.confidence95 = [];
-        T_hvsr.standard_deviation = [];
-        T_hvsr.curve_EV = [];
-        T_hvsr.curve_NV = [];
+        DTB__hvsr__curve = cell(Nsurveys,1);
+        %DTB{s,1}.hvsr.error = cell(Nsurveys,1);
+        DTB__hvsr__confidence95 = cell(Nsurveys,1);
+        DTB__hvsr__standard_deviation = cell(Nsurveys,1);
+        DTB__hvsr__curve_EV = cell(Nsurveys,1);
+        DTB__hvsr__curve_NV = cell(Nsurveys,1);
         %
-        T_hvsr.peaks_idx = [];   %index of local maxima
-        T_hvsr.hollows_idx = [];   %index of local minima
-        %T_hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
+        DTB__hvsr__peaks_idx = cell(Nsurveys,1);   %index of local maxima
+        DTB__hvsr__hollows_idx = cell(Nsurveys,1);   %index of local minima
+        %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
         % hvsr peaks (authomatic/user)
-        T_hvsr.user_main_peak_frequence = NaN;
-        T_hvsr.user_main_peak_amplitude = NaN;
-        T_hvsr.user_main_peak_id_full_curve = NaN;
-        T_hvsr.user_main_peak_id_in_section = NaN;
+        DTB__hvsr__user_main_peak_frequence = NaN * ones(Nsurveys,1);
+        DTB__hvsr__user_main_peak_amplitude = NaN * ones(Nsurveys,1);
+        DTB__hvsr__user_main_peak_id_full_curve = NaN * ones(Nsurveys,1);
+        DTB__hvsr__user_main_peak_id_in_section = NaN * ones(Nsurveys,1);
         
-        T_hvsr.auto_main_peak_frequence = NaN;
-        T_hvsr.auto_main_peak_amplitude = NaN;
-        T_hvsr.auto_main_peak_id_full_curve= NaN;
-        T_hvsr.auto_main_peak_id_in_section = NaN;
+        DTB__hvsr__auto_main_peak_frequence = NaN * ones(Nsurveys,1);
+        DTB__hvsr__auto_main_peak_amplitude = NaN * ones(Nsurveys,1);
+        DTB__hvsr__auto_main_peak_id_full_curve= NaN * ones(Nsurveys,1);
+        DTB__hvsr__auto_main_peak_id_in_section = NaN * ones(Nsurveys,1);
         
         %
-        %%   DTB{}.hvsr180.
+        %%   DTB__hvsr180.
         %       hvsr computed on 180 deg at a specified step
         %       clockwise? with respect to the north direction
         %       North here is assumed as positive Y axis and HVSR measurements are spposed to be
         %       performed all with the North-component of geophone
         %       oriented northworth
-        T_hvsr180.angle_id = 1;% 1 = option-1 in uicontrol: off
-        T_hvsr180.angles = [];
-        T_hvsr180.angle_step = 0;
-        T_hvsr180.spectralratio = [];
-        T_hvsr180.preferred_direction = [];
-        %%   DTB{}.well.
-        T_well.well_id   = 0;% 1 = option-1 in uicontrol: off
-        T_well.well_name = '';
-        T_well.bedrock_depth__KNOWN      = 'n.a.';% if  .well_name == ''; this depth must be computed, otherwise it is considered measured
-        T_well.bedrock_depth_source      = 'n.a.';
-        T_well.bedrock_depth__COMPUTED   = 'n.a.';
-        T_well.bedrock_depth__IBS1999    = 'n.a.';
-        T_well.bedrock_depth__PAROLAI2002= 'n.a.';
-        T_well.bedrock_depth__HINZEN2004 = 'n.a.';
+        DTB__hvsr180__angle_id = ones(Nsurveys,1);% 1 = option-1 in uicontrol: off
+        DTB__hvsr180__angles = cell(Nsurveys,1);
+        DTB__hvsr180__angle_step =zeros(Nsurveys,1);
+        DTB__hvsr180__spectralratio = cell(Nsurveys,1);
+        DTB__hvsr180__preferred_direction = cell(Nsurveys,1);
+        %%   DTB__well.
+        DTB__well__well_id = zeros(Nsurveys,1);% 1 = option-1 in uicontrol: off
+        DTB__well__well_name = cell(Nsurveys,1);
+        DTB__well__bedrock_depth__KNOWN = cell(Nsurveys,1);%       Filled later  % if  .well_name == ''; this depth must be computed, otherwise it is considered measured
+        DTB__well__bedrock_depth_source = cell(Nsurveys,1);%       Filled later
+        DTB__well__bedrock_depth__COMPUTED   = cell(Nsurveys,1);%       Filled later
+        DTB__well__bedrock_depth__IBS1999          = cell(Nsurveys,1);%       Filled later
+        DTB__well__bedrock_depth__PAROLAI2002= cell(Nsurveys,1);%       Filled later
+        DTB__well__bedrock_depth__HINZEN2004  = cell(Nsurveys,1);%       Filled later
         %
         %% ----------------------------------------------------------------
         for s = 1:Nsurveys
-            DTB{s,1}.status = 1;
-            DTB{s,1}.alaboration_progress = 0;% [0]init [1]windowed
-            DTB{s,1}.wndows              = T_windows;
-            DTB{s,1}.elab_parameters = T_elab_parameters;
-            DTB{s,1}.section                = T_section;
-            DTB{s,1}.hvsr                    = T_hvsr;
-            DTB{s,1}.hvsr180              = T_hvsr180;
-            DTB{s,1}.well                 = T_well;
+            DTB__elab_parameters__status{s,1}       = 'Not confirmed';
+            DTB__elab_parameters__windows_pad{s,1} = default_values.pad_length;
+            DTB__elab_parameters__filter_name{s,1}  = 'none';
+            %
+            DTB__well__well_name{s,1}                                  = '';
+            DTB__well__bedrock_depth__KNOWN{s,1}          = 'n.a.';
+            DTB__well__bedrock_depth_source{s,1}               = 'n.a.';
+            DTB__well__bedrock_depth__COMPUTED{s,1}   = 'n.a.';
+            DTB__well__bedrock_depth__IBS1999{s,1}          = 'n.a.';
+            DTB__well__bedrock_depth__PAROLAI2002{s,1} = 'n.a.';
+            DTB__well__bedrock_depth__HINZEN2004{s,1}   = 'n.a.';
+            %%
             sampling_frequences(s) = SURVEYS{s,3};
         end
         %% setup measurements-well connections
         for ww=1:size(WELLS,1)
             for datid = WELLS{ww,3}%data corresponding to well. Same well may be used for multiple HV measurements.
-                DTB{datid,1}.well.well_id   = ww;% 1 = option-1 in uicontrol: off
-                DTB{datid,1}.well.well_name = WELLS{ww,1};
+                DTB__well__well_id(datid,1)  = ww;% 1 = option-1 in uicontrol: off
+                DTB__well__well_name{datid,1} = WELLS{ww,1};
                 %
                 if ~isempty(WLLS)
                     if ~isempty(WLLS{ww,1})% well has a descriptive file
-                        DTB{datid,1}.well.bedrock_depth__KNOWN = sum(WLLS{ww,1}{2});
-                        DTB{datid,1}.well.bedrock_depth_source = 'lithology in file';
+                        DTB__well__bedrock_depth__KNOWN{datid,1} = sum(WLLS{ww,1}{2});
+                        DTB__well__bedrock_depth_source{datid,1} = 'lithology in file';
                         % if  .well_name == ''; this depth must be computed, otherwise it is considered measured
                     else% well has no descriptive file (bedrock dept must set manually)
-                        DTB{datid,1}.well.bedrock_depth__KNOWN = 'n.a.';
-                        DTB{datid,1}.well.bedrock_depth_source = 'missing lithology file';
+                        DTB__well__bedrock_depth__KNOWN{datid,1} = 'n.a.';
+                        DTB__well__bedrock_depth_source{datid,1} = 'missing lithology file';
                     end
                 end
             end
@@ -4430,8 +5013,107 @@ fprintf('[READY !]\n');
         sampling_frequences = [];
         %
         %                                                                 must be smaller than this treshold.
-        %% Database: DTB
-        DTB = {};
+        %% Database: DTB =================
+        %%   DTB__status
+        DTB__status = [];%                                            DTB{s,1}.status                     [N,1] vector
+        DTB__elaboration_progress=[];%                      DTB{s,1}.alaboration_progress
+        %%   DTB__windows
+        DTB__windows__width_sec   = [];%         DTB{s,1}.windows.width_sec          [N,1] vector           
+        DTB__windows__number      = [];%         DTB{s,1}.windows.number             [N,1] vector 
+        DTB__windows__number_fft  = [];%         DTB{s,1}.windows.number_fft         [N,1] vector
+        DTB__windows__indexes     = {};%         DTB{s,1}.windows.indexes            [element is a Nwin*2 matrix]
+        DTB__windows__is_ok       = {};%         DTB{s,1}.windows.is_ok              [element is a Nwin*2 matrix]
+        DTB__windows__winv        = {};%         DTB{s,1}.windows.winv               [element is a Nwin*nf matrix]                 
+        DTB__windows__wine        = {};%         DTB{s,1}.windows.wine               [element is a Nwin*nf matrix]
+        DTB__windows__winn        = {};%         DTB{s,1}.windows.winn               [element is a Nwin*nf matrix]
+        DTB__windows__fftv        = {};%         DTB{s,1}.windows.fftv               [element is a Nwin*nf matrix]
+        DTB__windows__ffte        = {};%         DTB{s,1}.windows.ffte               [element is a Nwin*nf matrix]
+        DTB__windows__fftn        = {};%         DTB{s,1}.windows.fftn               [element is a Nwin*nf matrix]
+        DTB__windows__info = [];%                DTB{s,1}.windows.info = [1 x 6];    [N,6] vector                   
+        %%   DTB__elab_parameters        
+        DTB__elab_parameters__status = {};%           DTB{s,1}.elab_parameters.status
+        DTB__elab_parameters__hvsr_strategy = [];%    DTB{s,1}.elab_parameters.hvsr_strategy = get(T2_PA_HV,'Value');% picked from interface
+        DTB__elab_parameters__hvsr_freq_min = [];%    DTB{s,1}.elab_parameters.hvsr_freq_min = default_values.frequence_min;
+        DTB__elab_parameters__hvsr_freq_max = [];%    DTB{s,1}.elab_parameters.hvsr_freq_max = default_values.frequence_max;
+        DTB__elab_parameters__windows_width = [];%    DTB{s,1}.elab_parameters.windows_width = default_values.window_width;
+        DTB__elab_parameters__windows_overlap =  [];% DTB{s,1}.elab_parameters.windows_overlap = default_values.window_overlap_pc;
+        DTB__elab_parameters__windows_tapering = [];% DTB{s,1}.elab_parameters.windows_tapering = default_values.tap_percent;
+        DTB__elab_parameters__windows_sta_vs_lta=[];% DTB{s,1}.elab_parameters.windows_sta_vs_lta = default_values.sta_lta_ratio;
+        DTB__elab_parameters__windows_pad = {};%      DTB{s,1}.elab_parameters.windows_pad = default_values.pad_length;
+        DTB__elab_parameters__smoothing_strategy =[];%DTB{s,1}.elab_parameters.smoothing_strategy = get(T3_PA_wsmooth_strategy,'VAlue');
+        DTB__elab_parameters__smoothing_slider_val=[];%DTB{s,1}.elab_parameters.smoothing_slider_val = get(T3_PD_smooth_slider,'Value');
+            %
+            % filter
+        DTB__elab_parameters__filter_id = [];%            DTB{s,1}.elab_parameters.filter_id    = 1;
+        DTB__elab_parameters__filter_name={};%            DTB{s,1}.elab_parameters.filter_name  = 'none';
+        DTB__elab_parameters__filter_order=[];%           DTB{s,1}.elab_parameters.filter_order
+        DTB__elab_parameters__filterFc1=[];%              DTB{s,1}.elab_parameters.filterFc1
+        DTB__elab_parameters__filterFc2=[];%              DTB{s,1}.elab_parameters.filterFc2
+        DTB__elab_parameters__data_to_use=[];%            DTB{s,1}.elab_parameters.data_to_use
+        DTB__elab_parameters__THEfilter      ={};
+        %%   DTB__section
+        DTB__section__Min_Freq =[];%        DTB{s,1}.section.Min_Freq = 0.2;
+        DTB__section__Max_Freq =[];%        DTB{s,1}.section.Max_Freq = 100;
+        DTB__section__Frequency_Vector={};%        DTB{s,1}.section.Frequency_Vector = [];    [N*3 Matrix]
+            %
+        DTB__section__V_windows ={};%        DTB{s,1}.section.V_windows = [];% filled runtime
+        DTB__section__E_windows ={};%        DTB{s,1}.section.E_windows = [];% filled runtime
+        DTB__section__N_windows ={};%        DTB{s,1}.section.N_windows = [];% filled runtime
+            %
+        DTB__section__Average_V ={};%        DTB{s,1}.section.Average_V  = [];% filled runtime
+        DTB__section__Average_E ={};%        DTB{s,1}.section.Average_E = [];% filled runtime
+        DTB__section__Average_N ={};%        DTB{s,1}.section.Average_N = [];% filled runtime                    << compute_single_hv(dat_id)
+            %
+        DTB__section__HV_windows ={};%       DTB{s,1}.section.HV_windows = [];% filled runtime
+        DTB__section__EV_windows ={};%       DTB{s,1}.section.EV_windows = [];% filled runtime
+        DTB__section__NV_windows ={};%       DTB{s,1}.section.NV_windows = [];% filled runtime
+        %%   DTB__hvsr
+        DTB__hvsr__curve_full ={};%              DTB{s,1}.hvsr.curve_full
+        %DTB{s,1}.hvsr.error_full = [];
+        DTB__hvsr__confidence95_full={};%        DTB{s,1}.hvsr.confidence95_full
+        DTB__hvsr__curve_EV_full ={};%           DTB{s,1}.hvsr.curve_EV_full
+        DTB__hvsr__curve_NV_full={};%            DTB{s,1}.hvsr.curve_NV_full 
+        %
+        DTB__hvsr__EV_all_windows={};%           DTB{s,1}.hvsr.EV_all_windows
+        DTB__hvsr__NV_all_windows={};%           DTB{s,1}.hvsr.NV_all_windows
+        DTB__hvsr__HV_all_windows={};%           DTB{s,1}.hvsr.HV_all_windows
+        %
+        DTB__hvsr__curve={};%        DTB{s,1}.hvsr.curve
+            %DTB{s,1}.hvsr.error = [];
+        DTB__hvsr__confidence95={};%             DTB{s,1}.hvsr.confidence95 = [];
+        DTB__hvsr__standard_deviation={};%    DTB{s,1}.hvsr.standard_deviation = [];
+        DTB__hvsr__curve_EV={};%              DTB{s,1}.hvsr.curve_EV = [];
+        DTB__hvsr__curve_NV={};%              DTB{s,1}.hvsr.curve_NV = [];
+            %
+        DTB__hvsr__peaks_idx={};%        DTB{s,1}.hvsr.peaks_idx = [];   %index of local maxima
+        DTB__hvsr__hollows_idx={};%        DTB{s,1}.hvsr.hollows_idx = [];   %index of local minima
+            %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
+            % hvsr peaks (authomatic/user)
+        DTB__hvsr__user_main_peak_frequence = [];%        DTB{s,1}.hvsr.user_main_peak_frequence = NaN;
+        DTB__hvsr__user_main_peak_amplitude = [];%        DTB{s,1}.hvsr.user_main_peak_amplitude = NaN;
+        DTB__hvsr__user_main_peak_id_full_curve = [];%         DTB{s,1}.hvsr.hvsr.user_main_peak_id_full_curve = NaN; <<<<<< ISSUE
+        DTB__hvsr__user_main_peak_id_in_section = [];%        DTB{s,1}.hvsr.hvsr.user_main_peak_id_in_section = NaN;  <<<<<< ISSUE
+        DTB__hvsr__auto_main_peak_frequence= [];%        DTB{s,1}.hvsr.auto_main_peak_frequence = NaN;
+        DTB__hvsr__auto_main_peak_amplitude= [];%        DTB{s,1}.hvsr.auto_main_peak_amplitude = NaN;
+        DTB__hvsr__auto_main_peak_id_full_curve= [];%        DTB{s,1}.hvsr.auto_main_peak_id_full_curve= NaN;
+        DTB__hvsr__auto_main_peak_id_in_section= [];%;        DTB{s,1}.hvsr.auto_main_peak_id_in_section = NaN;
+        %
+        %%   DTB__hvsr180
+        DTB__hvsr180__angle_id = [];%        DTB{s,1}.hvsr180.angle_id = 1;% 1 = option-1 in uicontrol: off
+        DTB__hvsr180__angles = {};%        DTB{s,1}.hvsr180.angles = [];
+        DTB__hvsr180__angle_step = [];%        DTB{s,1}.hvsr180.angle_step = 0;
+        DTB__hvsr180__spectralratio = {};%        DTB{s,1}.hvsr180.spectralratio = [];
+        DTB__hvsr180__preferred_direction = {};%        DTB{s,1}.hvsr180.preferred_direction = [];
+        %%   DTB__well
+        DTB__well__well_id=[];%       DTB{s,1}.well.well_id   = 0;% 1 = option-1 in uicontrol: off
+        DTB__well__well_name={};%        DTB{s,1}.well.well_name = '';
+        DTB__well__bedrock_depth__KNOWN={};%       DTB{s,1}.well.bedrock_depth__KNOWN      = 'n.a.';% if  .well_name == ''; this depth must be computed, otherwise it is considered measured
+        DTB__well__bedrock_depth_source={};%       DTB{s,1}.well.bedrock_depth_source      = 'n.a.';
+        DTB__well__bedrock_depth__COMPUTED={};%       DTB{s,1}.well.bedrock_depth__COMPUTED   = 'n.a.';
+        DTB__well__bedrock_depth__IBS1999={};%       DTB{s,1}.well.bedrock_depth__IBS1999    = 'n.a.';
+        DTB__well__bedrock_depth__PAROLAI2002={};%        DTB{s,1}.well.bedrock_depth__PAROLAI2002= 'n.a.';
+        DTB__well__bedrock_depth__HINZEN2004={};%        DTB{s,1}.well.bedrock_depth__HINZEN2004 = 'n.a.';
+        %% Database =====================END
         %
         % NEW AND TEMPORARY FEATURES xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
         %    Reference models: vp  vs  rho  h  Qp  Qs
@@ -4651,7 +5333,7 @@ fprintf('[READY !]\n');
     end
     function select_main_peak()
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
-        if DTB{P.isshown.id}.wndows.number==0; return; end
+        if DTB__windows__number(P.isshown.id,1)==0; return; end
         %
         %
         clc
@@ -4663,8 +5345,8 @@ fprintf('[READY !]\n');
         end
         
         %         nf = P.ELAB_PARAMETERS{P.isshown.id,1}.WNDOWS_INFO(5);
-        df = DTB{P.isshown.id}.wndows.info(4);
-        idx_shift = DTB{P.isshown.id,1}.section.Frequency_Vector(1);
+        df = DTB__windows__info(P.isshown.id, 4);
+        idx_shift = DTB__section__Frequency_Vector{P.isshown.id,1}(1);
         %
         ifmin = fix(xmi/df);% expressed on the full freq scale
         ifmax = fix(xma/df);
@@ -4675,38 +5357,39 @@ fprintf('[READY !]\n');
         min_local_idx = ifmin - idx_shift +1;
         max_local_idx = ifmax - idx_shift +1;
         if min_local_idx < 1; min_local_idx =1; end
-        if max_local_idx >size(DTB{P.isshown.id,1}.hvsr.curve,1)
-            max_local_idx =size(DTB{P.isshown.id,1}.hvsr.curve,1);
+        if max_local_idx >size(DTB__hvsr__curve{P.isshown.id,1},1)
+            max_local_idx =size(DTB__hvsr__curve{P.isshown.id,1},1);
         end
         local_idx = min_local_idx:max_local_idx;
-        amax = max( DTB{P.isshown.id,1}.hvsr.curve(local_idx) );
-        imax = find( DTB{P.isshown.id,1}.hvsr.curve(local_idx)== amax);
+        amax = max( DTB__hvsr__curve{P.isshown.id,1}(local_idx) );
+        imax = find( DTB__hvsr__curve{P.isshown.id,1}(local_idx)== amax);
         imax = imax(1);
         imax = local_idx(imax);
-        DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence = df*(imax+idx_shift-1);
-        DTB{P.isshown.id,1}.hvsr.user_main_peak_amplitude = amax;
-        DTB{P.isshown.id,1}.hvsr.user_main_peak_id_full_curve = idx_shift+imax-1;
-        DTB{P.isshown.id,1}.hvsr.user_main_peak_id_in_section = imax;
+        DTB__hvsr__user_main_peak_frequence(P.isshown.id,1) = df*(imax+idx_shift-1);
+        DTB__hvsr__user_main_peak_amplitude(P.isshown.id,1) = amax;
+        DTB__hvsr__user_main_peak_id_full_curve(P.isshown.id,1) = idx_shift+imax-1;
+        DTB__hvsr__user_main_peak_id_in_section(P.isshown.id,1) = imax;
+        
         
         Graphic_update_hvsr_average_curve(0);
     end
     function deselect_main_peak()
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
         %
-        DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence = NaN;
-        DTB{P.isshown.id,1}.hvsr.user_main_peak_amplitude = NaN;
-        DTB{P.isshown.id,1}.hvsr.user_main_peak_id_full_curve = NaN;
-        DTB{P.isshown.id,1}.hvsr.user_main_peak_id_in_section = NaN;
+        DTB__hvsr__user_main_peak_frequence(P.isshown.id,1) = NaN;
+        DTB__hvsr__user_main_peak_amplitude(P.isshown.id,1) = NaN;
+        DTB__hvsr__user_main_peak_id_full_curve(P.isshown.id,1) = NaN;
+        DTB__hvsr__user_main_peak_id_in_section(P.isshown.id,1) = NaN;
         Graphic_update_hvsr_average_curve(0);
     end
     function delete_curve_set(axid)
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
-        if DTB{P.isshown.id}.wndows.number==0; return; end
+        if DTB__windows__number(P.isshown.id,1)==0; return; end
         %
         %
         [xmi,xma, ymi,yma] = getxyrange();
-        df = DTB{P.isshown.id}.wndows.info(4);
-        idx_shift = DTB{P.isshown.id,1}.section.Frequency_Vector(1);
+        df = DTB__windows__info(P.isshown.id, 4);
+        idx_shift = DTB__section__Frequency_Vector{P.isshown.id,1}(1);
         %
         ifmin = fix(xmi/df);% expressed on the full freq scale
         ifmax = fix(xma/df);
@@ -4716,22 +5399,22 @@ fprintf('[READY !]\n');
         min_local_idx = ifmin - idx_shift +1;
         max_local_idx = ifmax - idx_shift +1;
         if min_local_idx < 1; min_local_idx =1; end
-        if max_local_idx >size(DTB{P.isshown.id,1}.hvsr.curve,1)
-            max_local_idx =size(DTB{P.isshown.id,1}.hvsr.curve,1);
+        if max_local_idx >size(DTB__hvsr__curve{P.isshown.id,1},1)
+            max_local_idx =size(DTB__hvsr__curve{P.isshown.id,1},1);
         end
         local_idx = min_local_idx:max_local_idx;
         %
-        Nwin = DTB{P.isshown.id,1}.wndows.number;
+        Nwin = DTB__windows__number(P.isshown.id,1);
         for iw = 1:Nwin
-            if (DTB{P.isshown.id,1}.wndows.is_ok(iw)==1)
+            if (DTB__windows__is_ok{P.isshown.id,1}(iw)==1)
                 switch axid
-                    case 1; ampl = DTB{P.isshown.id,1}.section.HV_windows(local_idx,iw);%  V
-                    case 2; ampl = DTB{P.isshown.id,1}.section.EV_windows(local_idx,iw);% E
-                    case 3; ampl = DTB{P.isshown.id,1}.section.NV_windows(local_idx,iw);% N
+                    case 1; ampl = DTB__section__HV_windows{P.isshown.id,1}(local_idx,iw);%  V
+                    case 2; ampl = DTB__section__EV_windows{P.isshown.id,1}(local_idx,iw);% E
+                    case 3; ampl = DTB__section__NV_windows{P.isshown.id,1}(local_idx,iw);% N
                 end
                 %
                 if any(ymi<ampl) && any(ampl<yma)  
-                    DTB{P.isshown.id,1}.wndows.is_ok(iw)=0;
+                    DTB__windows__is_ok{P.isshown.id,1}(iw)=0;
                 end
             end
         end
@@ -4740,12 +5423,12 @@ fprintf('[READY !]\n');
     end
     function resume_curve_set(axid)
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
-        if DTB{P.isshown.id}.wndows.number==0; return; end
+        if DTB__windows__number(P.isshown.id,1)==0; return; end
         %
         %
         [xmi,xma, ymi,yma] = getxyrange();
-        df = DTB{P.isshown.id}.wndows.info(4);
-        idx_shift = DTB{P.isshown.id,1}.section.Frequency_Vector(1);
+        df = DTB__windows__info(P.isshown.id, 4);
+        idx_shift = DTB__section__Frequency_Vector{P.isshown.id,1}(1);
         %
         ifmin = fix(xmi/df);% expressed on the full freq scale
         ifmax = fix(xma/df);
@@ -4755,22 +5438,22 @@ fprintf('[READY !]\n');
         min_local_idx = ifmin - idx_shift +1;
         max_local_idx = ifmax - idx_shift +1;
         if min_local_idx < 1; min_local_idx =1; end
-        if max_local_idx >size(DTB{P.isshown.id,1}.hvsr.curve,1)
-            max_local_idx =size(DTB{P.isshown.id,1}.hvsr.curve,1);
+        if max_local_idx >size(DTB__hvsr__curve{P.isshown.id,1},1)
+            max_local_idx =size(DTB__hvsr__curve{P.isshown.id,1},1);
         end
         local_idx = min_local_idx:max_local_idx;
         %
-        Nwin = DTB{P.isshown.id,1}.wndows.number;
+        Nwin = DTB__windows__number(P.isshown.id,1);
         for iw = 1:Nwin
-            if (DTB{P.isshown.id,1}.wndows.is_ok(iw)==0)
+            if (DTB__windows__is_ok{P.isshown.id,1}(iw)==0)
                 switch axid
-                    case 1; ampl = DTB{P.isshown.id,1}.section.HV_windows(local_idx,iw);%  V
-                    case 2; ampl = DTB{P.isshown.id,1}.section.EV_windows(local_idx,iw);% E
-                    case 3; ampl = DTB{P.isshown.id,1}.section.NV_windows(local_idx,iw);% N
+                    case 1; ampl = DTB__section__HV_windows{P.isshown.id,1}(local_idx,iw);%  V
+                    case 2; ampl = DTB__section__EV_windows{P.isshown.id,1}(local_idx,iw);% E
+                    case 3; ampl = DTB__section__NV_windows{P.isshown.id,1}(local_idx,iw);% N
                 end
                 %
                 if any(ymi<ampl) && any(ampl<yma)  
-                    DTB{P.isshown.id,1}.wndows.is_ok(iw)=1;
+                    DTB__windows__is_ok{P.isshown.id,1}(iw)=1;
                 end
             end
         end
@@ -4780,9 +5463,10 @@ fprintf('[READY !]\n');
 %%    gui
     function Graphic_Gui_update_elaboration_parameters()
         if (0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))
+           
             %% Tab-1 (main)
             %>> warning('In Graphic_Gui_update_elaboration_parameters: chech to show parameter value and not slider value.')
-            switch DTB{P.isshown.id,1}.status
+            switch DTB__status(P.isshown.id,1)
                 case 0
                     set(T1_PA_id     ,'BackgroundColor','g')
                     set(T1_PA_FileID ,'BackgroundColor','g')
@@ -4807,32 +5491,31 @@ fprintf('[READY !]\n');
             end
             %
             hvstring = get(T2_PA_HV, 'String');
-            hvstring = hvstring{DTB{P.isshown.id,1}.elab_parameters.hvsr_strategy, 1};
+            hvstring = hvstring{DTB__elab_parameters__hvsr_strategy(P.isshown.id,1), 1};
             set(T1_PA_hvsr_strategy,'String', hvstring);
-            % >>>  set(T1_PA_hvsr_strategy,'String', DTB{P.isshown.id,1}.elab_parameters.hvsr_strategy);
             
-            set(T1_PA_hvsr_freq_min,'String', DTB{P.isshown.id,1}.section.Min_Freq );
-            set(T1_PA_hvsr_freq_max,'String', DTB{P.isshown.id,1}.section.Max_Freq);
-            set(T1_PA_windows_width,'String', DTB{P.isshown.id,1}.elab_parameters.windows_width);
-            set(T1_PA_windows_overlap,'String', DTB{P.isshown.id,1}.elab_parameters.windows_overlap);
-            set(T1_PA_windows_tapering,'String', DTB{P.isshown.id,1}.elab_parameters.windows_tapering);
-            set(T1_PA_windows_sta_vs_lta,'String', DTB{P.isshown.id,1}.elab_parameters.windows_sta_vs_lta);
-            set(T1_PA_windows_pad,'String', DTB{P.isshown.id,1}.elab_parameters.windows_pad);
-            set(T1_PA_smoothing_strategy,'String', DTB{P.isshown.id,1}.elab_parameters.smoothing_strategy);
+            set(T1_PA_hvsr_freq_min,'String', DTB__section__Min_Freq(P.isshown.id,1) );
+            set(T1_PA_hvsr_freq_max,'String', DTB__section__Max_Freq(P.isshown.id,1) );
+            set(T1_PA_windows_width,'String', DTB__elab_parameters__windows_width(P.isshown.id,1));
+            set(T1_PA_windows_overlap,'String', DTB__elab_parameters__windows_overlap(P.isshown.id,1));
+            set(T1_PA_windows_tapering,'String', DTB__elab_parameters__windows_tapering(P.isshown.id,1));
+            set(T1_PA_windows_sta_vs_lta,'String',DTB__elab_parameters__windows_sta_vs_lta(P.isshown.id,1));
+            set(T1_PA_windows_pad,'String',DTB__elab_parameters__windows_pad{P.isshown.id,1});
+            set(T1_PA_smoothing_strategy,'String', DTB__elab_parameters__smoothing_strategy(P.isshown.id,1));
             %set(T1_PA_smoothing_parameter_value,'String', DTB{P.isshown.id,1}.elab_parameters.smoothing_slider_val);% shown parameter, not the slider value
             
-            % % set(T3_P1_angular_samp,'Value',DTB{P.isshown.id,1}.hvsr180.angle_id);%{'off','45','30','15','10','5','2.5'}, ...
-            anglestring = get(T3_P1_angular_samp,'String');
-            anglestring = anglestring{DTB{P.isshown.id,1}.hvsr180.angle_id, 1};
+            % % set(T3_P1_angular_samp,'Value',DTB__hvsr180__angle_id(P.isshown.id,1));%{'off','45','30','15','10','5','2.5'}, ...
+            anglestring = get(T3_P1_angular_samp,'String');%% correct
+            anglestring = anglestring{DTB__hvsr180__angle_id(P.isshown.id,1), 1};
             set(T1_PA_angular_sampling,'String',anglestring);
             %% Tab-2 (Windowing)
-            set(T2_PA_HV,'Value',DTB{P.isshown.id,1}.elab_parameters.hvsr_strategy);%         HVSR strategy
-            set(T3_P1_winsize,'String', DTB{P.isshown.id,1}.elab_parameters.windows_width);%             Windows width
-            set(T3_P1_winoverlap,'String', DTB{P.isshown.id,1}.elab_parameters.windows_overlap);%             Windows overlap
-            set(T3_P1_wintstaltaratio,'String', DTB{P.isshown.id,1}.elab_parameters.windows_sta_vs_lta);%             Windows sta/lta
-            if ~isempty(DTB{P.isshown.id}.wndows.info)
-                if DTB{P.isshown.id}.wndows.info(2)>0
-                    ns_window = DTB{P.isshown.id}.wndows.info(2);
+            set(T2_PA_HV,'Value',DTB__elab_parameters__hvsr_strategy(P.isshown.id,1));%         HVSR strategy
+            set(T3_P1_winsize,'String', DTB__elab_parameters__windows_width(P.isshown.id,1));%             Windows width
+            set(T3_P1_winoverlap,'String', DTB__elab_parameters__windows_overlap(P.isshown.id,1));%             Windows overlap
+            set(T3_P1_wintstaltaratio,'String', DTB__elab_parameters__windows_sta_vs_lta(P.isshown.id,1));%             Windows sta/lta
+            if ~isempty(DTB__windows__info)
+                if DTB__windows__info(P.isshown.id, 2)>0
+                    ns_window = DTB__windows__info(P.isshown.id, 2);
                     pad0 = 2^nextpow2(ns_window);
                     set(T2_PD_win_samplespow2, 'String',num2str(pad0))
                 else
@@ -4842,46 +5525,46 @@ fprintf('[READY !]\n');
                 set(T2_PD_win_samplespow2, 'String',' ')
             end
             %% Tab-3 (Computations)
-            set(hT3_PA_edit_fmin,'String', DTB{P.isshown.id,1}.section.Min_Freq );%         frequence range
-            set(hT3_PA_edit_fmax,'String', DTB{P.isshown.id,1}.section.Max_Freq);
-            set(T3_P1_wintapering,'String', DTB{P.isshown.id,1}.elab_parameters.windows_tapering);%         >>> Windows tapering
-            set(T3_P1_wpadto,'String', DTB{P.isshown.id,1}.elab_parameters.windows_pad);%         >>> Padding
+            set(hT3_PA_edit_fmin,'String', DTB__section__Min_Freq(P.isshown.id,1) );%         frequence range
+            set(hT3_PA_edit_fmax,'String', DTB__section__Max_Freq(P.isshown.id,1) );
+            set(T3_P1_wintapering,'String',DTB__elab_parameters__windows_tapering(P.isshown.id,1));%         >>> Windows tapering
+            set(T3_P1_wpadto,'String', DTB__elab_parameters__windows_pad{P.isshown.id,1});%         >>> Padding
             
             smoothstring = get(T3_PA_wsmooth_strategy, 'String');
-            smoothstring = smoothstring{DTB{P.isshown.id,1}.elab_parameters.smoothing_strategy, 1};
+            smoothstring = smoothstring{DTB__elab_parameters__smoothing_strategy(P.isshown.id,1), 1};
             set(T1_PA_smoothing_strategy,'String', smoothstring);
-            set(T3_PA_wsmooth_amount,'String', DTB{P.isshown.id,1}.elab_parameters.smoothing_slider_val);% shown parameter, not the slider value
+            set(T3_PA_wsmooth_amount,'String', DTB__elab_parameters__smoothing_slider_val(P.isshown.id,1));% shown parameter, not the slider value
             %
-            set(T3_PA_wsmooth_strategy,'Value', DTB{P.isshown.id,1}.elab_parameters.smoothing_strategy);
-            set(T3_PD_smooth_slider,'Value',DTB{P.isshown.id,1}.elab_parameters.smoothing_slider_val);
+            set(T3_PA_wsmooth_strategy,'Value', DTB__elab_parameters__smoothing_strategy(P.isshown.id,1));
+            set(T3_PD_smooth_slider,'Value',DTB__elab_parameters__smoothing_slider_val(P.isshown.id,1));
             setup_smoothing_value();
             %
-            set(T3_P1_angular_samp, 'Value',DTB{P.isshown.id,1}.hvsr180.angle_id);%{'off','45','30','15','10','5','2.5'}  
+            set(T3_P1_angular_samp, 'Value',DTB__hvsr180__angle_id(P.isshown.id,1));%{'off','45','30','15','10','5','2.5'}  
             %
             % filter
-            idfilter = DTB{P.isshown.id,1}.elab_parameters.filter_id;
+            idfilter = DTB__elab_parameters__filter_id(P.isshown.id,1);
             set(T2_PA_filter,'Value',idfilter);
             switch idfilter
                 case 1% OFF
                     set(T2_PA_dattoshow,'Value',1);
                     set(T2_PA_dattoshow,'Enable','off');
-                    if isnan(DTB{P.isshown.id,1}.elab_parameters.filterFc1); set(T2_PA_filter_fmin,'String',' ','Enable','off'); end
-                    if isnan(DTB{P.isshown.id,1}.elab_parameters.filterFc2); set(T2_PA_filter_fmax,'String',' ','Enable','off'); end
+                    if isnan(DTB__elab_parameters__filterFc1(P.isshown.id,1)); set(T2_PA_filter_fmin,'String',' ','Enable','off'); end
+                    if isnan(DTB__elab_parameters__filterFc2(P.isshown.id,1)); set(T2_PA_filter_fmax,'String',' ','Enable','off'); end
                     set(T2_PA_filter_show,'Enable','off');
                     set(T2_PA_dattoUSE, 'Enable','off');
                 case 2% BANDPASS
-                    set(T2_PA_filter_fmin,'String', num2str(DTB{P.isshown.id,1}.elab_parameters.filterFc1),'Enable','on'  );
-                    set(T2_PA_filter_fmax,'String', num2str(DTB{P.isshown.id,1}.elab_parameters.filterFc2),'Enable','on'  );
+                    set(T2_PA_filter_fmin,'String', num2str(DTB__elab_parameters__filterFc1(P.isshown.id,1)),'Enable','on'  );
+                    set(T2_PA_filter_fmax,'String', num2str(DTB__elab_parameters__filterFc2(P.isshown.id,1)),'Enable','on'  );
                     set(T2_PA_filter_show,'Enable','on');
                     set(T2_PA_dattoUSE,   'Enable','on');
                 case 3% LOWPASS
                     set(T2_PA_filter_fmin,'String', ' ','Enable','on' );
-                    set(T2_PA_filter_fmax,'String', num2str(DTB{P.isshown.id,1}.elab_parameters.filterFc2),'Enable','on'  );
+                    set(T2_PA_filter_fmax,'String', num2str(DTB__elab_parameters__filterFc2(P.isshown.id,1)),'Enable','on'  );
                     set(T2_PA_filter_show,'Enable','on');
                     set(T2_PA_dattoUSE,   'Enable','on');
                 case 4% HIGHPASS
                     set(T2_PA_filter_fmin,'String', ' ','Enable','on' );
-                    set(T2_PA_filter_fmax,'String', num2str(DTB{P.isshown.id,1}.elab_parameters.filterFc2),'Enable','on'  );
+                    set(T2_PA_filter_fmax,'String', num2str(DTB__elab_parameters__filterFc2(P.isshown.id,1)),'Enable','on'  );
                     set(T2_PA_filter_show,'Enable','on'  );
                     set(T2_PA_dattoUSE,   'Enable','on');
             end
@@ -4895,7 +5578,7 @@ fprintf('[READY !]\n');
             
             
             %
-            switch DTB{P.isshown.id,1}.elab_parameters.data_to_use% [1]STA/LTA [2]spectral ratios
+            switch DTB__elab_parameters__data_to_use(P.isshown.id,1)% [1]STA/LTA [2]spectral ratios
                 case 2% use filtered data in H/V
                      set(T2_PA_dattoUSE,'Value',2);% filtered
                 otherwise
@@ -4903,7 +5586,7 @@ fprintf('[READY !]\n');
                     set(T2_PA_dattoUSE,'Value',1);% original
             end
             %
-            if DTB{P.isshown.id,1}.wndows.number==0 % prevent computing when not windowed 
+            if DTB__windows__number(P.isshown.id,1)==0 % prevent computing when not windowed 
                 set(T2_PA_HV,              'Enable','off')
                 set(hT3_PA_edit_fmin,      'Enable','off')
                 set(hT3_PA_edit_fmax,      'Enable','off')
@@ -4932,6 +5615,7 @@ fprintf('[READY !]\n');
 %%    plot: data
     function Graphic_update_data(newfigure)
         if (0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))
+            is_drawing();
             if(newfigure)
                 hlocal=figure('name',strcat('Microtremor: ID=',num2str(P.isshown.id)));
                 hgui = hlocal;
@@ -4944,10 +5628,9 @@ fprintf('[READY !]\n');
                 h_ax(2) = hAx_datE;
                 h_ax(3) = hAx_datN;
                 %
-                set(T2_PD_win_samples,'String',num2str( DTB{P.isshown.id}.wndows.info(2) )); %  ns = n of samples. [ns, ns_window, ns_overlap,  df, n-frequences];
+                set(T2_PD_win_samples,'String',num2str( DTB__windows__info(P.isshown.id,2) )); %  ns = n of samples. [ns, ns_window, ns_overlap,  df, n-frequences];
             end
-            for ii = 1:3; cla(h_ax(ii)); end
-            is_busy();
+            for ii = 1:3; cla(h_ax(ii)); end            
             %
             %% Show motion components
             if get(T2_PA_dattoshow,'Value')==1
@@ -4998,8 +5681,8 @@ fprintf('[READY !]\n');
 %                 min(DDAT{P.isshown.id,2}), max(DDAT{P.isshown.id,2}); ...
 %                 min(DDAT{P.isshown.id,3}), max(DDAT{P.isshown.id,3})];
             %% Show windows
-            WIDX = DTB{P.isshown.id,1}.wndows.indexes;
-            WIOK = DTB{P.isshown.id,1}.wndows.is_ok;
+            WIDX = DTB__windows__indexes{P.isshown.id,1};
+            WIOK = DTB__windows__is_ok{P.isshown.id,1};
             if(~isempty(WIDX))
                 Nwin = size(WIDX,1);
                 colrs = Pfunctions__get_rgb_colors(Nwin);% windows-colors
@@ -5041,7 +5724,7 @@ fprintf('[READY !]\n');
             ylim(h_ax(3), rangeVEN(3,:))
             %
             drawnow
-            is_done();
+            is_done();            
         end
     end
 %%    plot: spectrums
@@ -5071,12 +5754,12 @@ fprintf('[READY !]\n');
         %% main peak value
         thisff = 'n.a.';
         ii = P.isshown.id;
-        if ~isnan(DTB{ii,1}.hvsr.user_main_peak_frequence)
-            thisff = DTB{ii,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
+        if ~isnan(DTB__hvsr__user_main_peak_frequence(ii,1))
+            thisff = DTB__hvsr__user_main_peak_frequence(ii,1);% user selection is always preferred
             thisff = strcat( num2str(  fix(100*thisff)/100  ), ' Hz');
         else
-            if ~isnan(DTB{ii,1}.hvsr.auto_main_peak_frequence)
-                thisff = DTB{ii,1}.hvsr.auto_main_peak_frequence;
+            if ~isnan(DTB__hvsr__auto_main_peak_frequence(ii,1))
+                thisff = DTB__hvsr__auto_main_peak_frequence(ii,1);
                 thisff = strcat( num2str(  round(100*thisff)/100  ), ' Hz');
             end
         end
@@ -5084,7 +5767,7 @@ fprintf('[READY !]\n');
         %
         %% Toggle directional
         tflag = 'off'; 
-        if DTB{ii,1}.hvsr180.angle_id~=1; tflag = 'on'; end% wasperformed
+        if DTB__hvsr180__angle_id(ii,1)~=1; tflag = 'on'; end% wasperformed
         set(T3_Option_4_1,'enable',tflag)
         set(T3_Option_4_2,'enable',tflag)
         %
@@ -5093,13 +5776,14 @@ fprintf('[READY !]\n');
     end
     function Graphic_update_spectrum_of_windows(newfigure)%0        Spectrum tile
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        is_drawing();
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be setted
+        if isempty(DTB__section__Frequency_Vector{ii,1}); return; end% Fvec must be setted
         %
         mi = zeros(1,3);
         ma = zeros(1,3);
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
         %
         if(newfigure)
             hlocal=figure('name',strcat('Spectrum of windows: ID=',num2str(P.isshown.id)));
@@ -5117,10 +5801,10 @@ fprintf('[READY !]\n');
 %             cla(h_ax(3));
         end
         %
-        Wids = 1: DTB{P.isshown.id,1}.wndows.number;%  %1:size(P.CURRENT_SPECTRUM.V_windows, 2);
+        Wids = 1:DTB__windows__number(P.isshown.id,1);
         %% V
         set(hgui,'CurrentAxes',h_ax(1));
-        DD = DTB{P.isshown.id,1}.section.V_windows;
+        DD = DTB__section__V_windows{P.isshown.id,1};
         DD = DD./max(max(abs(DD)));
         mi(1) = min(min(DD)); 
         ma(1) = max(max(DD));
@@ -5136,7 +5820,7 @@ fprintf('[READY !]\n');
         ylabel('Frequence (Hz)','fontweight','bold')
         %% E
         set(hgui,'CurrentAxes',h_ax(2));
-        DD = DTB{P.isshown.id,1}.section.E_windows;
+        DD = DTB__section__E_windows{P.isshown.id,1};
         DD = DD./max(max(abs(DD)));
         mi(2) = min(min(DD)); 
         ma(2) = max(max(DD));
@@ -5152,7 +5836,7 @@ fprintf('[READY !]\n');
         ylabel('Frequence (Hz)','fontweight','bold')
         %% N
         set(hgui,'CurrentAxes',h_ax(3));
-        DD = DTB{P.isshown.id,1}.section.N_windows;
+        DD = DTB__section__N_windows{P.isshown.id,1};
         DD = DD./max(max(abs(DD)));
         mi(3) = min(min(DD)); 
         ma(3) = max(max(DD));
@@ -5167,8 +5851,8 @@ fprintf('[READY !]\n');
         xlabel('(N-S) Window no.','fontweight','bold')
         ylabel('Frequence (Hz)','fontweight','bold')
         %% Show windows
-        WIDS = DTB{P.isshown.id,1}.wndows.indexes;
-        WOKS = DTB{P.isshown.id,1}.wndows.is_ok;
+        WIDS = DTB__windows__indexes{P.isshown.id,1};
+        WOKS =DTB__windows__is_ok{P.isshown.id,1};
         if(~isempty(WIDS))
             ya = min(Fvec);
             yb = max(Fvec);
@@ -5223,13 +5907,14 @@ fprintf('[READY !]\n');
     end
     function Graphic_update_contour_of_windows(newfigure)%1         Spectrum contour
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        is_drawing();
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be setted
+        if isempty(DTB__section__Frequency_Vector{ii,1}); return; end% Fvec must be setted
         %
         mi = zeros(1,3);
         ma = zeros(1,3);
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
         if(newfigure)
             hlocal=figure('name',strcat('Contour plot of windows: ID=',num2str(P.isshown.id)));
             hgui = hlocal;
@@ -5246,12 +5931,12 @@ fprintf('[READY !]\n');
             cla(h_ax(3));
         end
 
-        Wids = 1:DTB{P.isshown.id,1}.wndows.number;%  %1:size(P.CURRENT_SPECTRUM.V_windows, 2);
+        Wids = 1:DTB__windows__number(P.isshown.id,1);
         %% V
         set(hgui,'CurrentAxes',h_ax(1));
         %%%           P.WNDOWS_FFT{dat_id,cc}; %VEN
         %        contourf(xvec, zvec, DD, linspace(A(1),A(2),A(3)),'EdgeColor','none')
-        DD = DTB{P.isshown.id,1}.section.V_windows;
+        DD = DTB__section__V_windows{P.isshown.id,1};
         DD = DD./max(max(abs(DD)));
         mi(1) = min(min(DD)); 
         ma(1) = max(max(DD));
@@ -5266,7 +5951,7 @@ fprintf('[READY !]\n');
         ylabel('Frequence (Hz)','fontweight','bold')
         %% E
         set(hgui,'CurrentAxes',h_ax(2));
-        DD = DTB{P.isshown.id,1}.section.E_windows;
+        DD = DTB__section__E_windows{P.isshown.id,1};
         DD = DD./max(max(abs(DD)));
         mi(2) = min(min(DD)); 
         ma(2) = max(max(DD));
@@ -5280,7 +5965,7 @@ fprintf('[READY !]\n');
         ylabel('Frequence (Hz)','fontweight','bold')
         %% N
         set(hgui,'CurrentAxes',h_ax(3));
-        DD = DTB{P.isshown.id,1}.section.N_windows;
+        DD = DTB__section__N_windows{P.isshown.id,1};
         DD = DD./max(max(abs(DD)));
         mi(3) = min(min(DD)); 
         ma(3) = max(max(DD));
@@ -5293,8 +5978,8 @@ fprintf('[READY !]\n');
         xlabel('(N-S) Window no.','fontweight','bold')
         ylabel('Frequence (Hz)','fontweight','bold')
         %% Show windows
-        WIDS = DTB{P.isshown.id,1}.wndows.indexes;
-        WOKS = DTB{P.isshown.id,1}.wndows.is_ok;
+        WIDS = DTB__windows__indexes{P.isshown.id,1};
+        WOKS = DTB__windows__is_ok{P.isshown.id,1};
         if(~isempty(WIDS))
             ya = min(Fvec);
             yb = max(Fvec);
@@ -5347,13 +6032,14 @@ fprintf('[READY !]\n');
     end
     function Graphic_update_hvsr_of_windows(newfigure)%2            HVSR tile
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        is_drawing();
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be setted
+        if isempty(DTB__section__Frequency_Vector{ii,1}); return; end% Fvec must be setted
         %
         mi = zeros(1,3);
         ma = zeros(1,3);
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
         if(newfigure)
             hlocal=figure('name',strcat('HVSR of windows: ID=',num2str(P.isshown.id)));
             hgui = hlocal;
@@ -5369,22 +6055,13 @@ fprintf('[READY !]\n');
             cla(h_ax(2));
             cla(h_ax(3));
         end
+        
+        Wids = 1:DTB__windows__number(P.isshown.id,1);
+        HV = DTB__section__HV_windows{P.isshown.id,1};
+        EV = DTB__section__EV_windows{P.isshown.id,1};
+        NV = DTB__section__NV_windows{P.isshown.id,1};
+        istitle='H/V';
 
-        Wids = 1:DTB{P.isshown.id,1}.wndows.number;%  %1:size(P.CURRENT_SPECTRUM.HV_windows, 2);
-        Angular_on_of = 0;%get(T3_PD_toggle_angle,'Value');
-        if(Angular_on_of==0)% show traditional/angular HVSR
-            %fprintf('show traditional HV\n')
-            HV = DTB{P.isshown.id,1}.section.HV_windows;
-            EV = DTB{P.isshown.id,1}.section.EV_windows;
-            NV = DTB{P.isshown.id,1}.section.NV_windows;
-            istitle='H/V';
-        else
-            %fprintf('show angular HV\n')
-            HV = DTB{P.isshown.id,1}.section.Angular_HV_windows;
-            EV = [];
-            NV = [];
-            istitle='Angular - H/V';
-        end
         %% V
         set(hgui,'CurrentAxes',h_ax(1));
         DD = HV;
@@ -5446,19 +6123,14 @@ fprintf('[READY !]\n');
             cla(h_ax(3));
         end
         %% Show windows
-        WIDS = DTB{P.isshown.id,1}.wndows.indexes;
-        WOKS = DTB{P.isshown.id,1}.wndows.is_ok;
+        WIDS = DTB__windows__indexes{P.isshown.id,1};
+        WOKS = DTB__windows__is_ok{P.isshown.id,1};
         if(~isempty(WIDS))
             ya = min(Fvec);
             yb = max(Fvec);
             ypatch = [ya ya yb yb];
             Nwin = size(WIDS,1);
-
-            if(Angular_on_of==0)
-                nc=3;
-            else
-                nc = 1;
-            end
+            nc=3;
             for s = 1:nc
                 set(hgui,'CurrentAxes',h_ax(s));
                 for w = 1:Nwin
@@ -5506,8 +6178,9 @@ fprintf('[READY !]\n');
     end
     function Graphic_update_hvsr_contouring_of_windows(newfigure)%3 HVSR contour
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        is_drawing();
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be setted
+        if isempty(DTB__section__Frequency_Vector{ii,1}); return; end% Fvec must be setted
         if(newfigure)
             hlocal=figure('name',strcat('HVSR Countour plot of windows: ID=',num2str(P.isshown.id)));
             hgui = hlocal;
@@ -5524,24 +6197,16 @@ fprintf('[READY !]\n');
             cla(h_ax(3));
         end
         %% V
-%             Fvec = DTB{P.isshown.id,1}.section.Frequency_Vector;
         mi = zeros(1,3);
         ma = zeros(1,3);
         %
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
-        Wids = 1:DTB{P.isshown.id,1}.wndows.number;%  %1:size(P.CURRENT_SPECTRUM.HV_windows, 2);
-        Angular_on_of = 0;%get(T3_PD_toggle_angle,'Value');
-        if(Angular_on_of==0)% show traditional/angular HVSR
-            HV = DTB{P.isshown.id,1}.section.HV_windows;
-            EV = DTB{P.isshown.id,1}.section.EV_windows;
-            NV = DTB{P.isshown.id,1}.section.NV_windows;
-        else
-            HV = DTB{P.isshown.id,1}.section.Angular_HV_windows;
-            EV =[];
-            NV = [];
-        end
-
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
+        Wids = 1:DTB__windows__number(P.isshown.id,1);
+        HV = DTB__section__HV_windows{P.isshown.id,1};
+        EV = DTB__section__EV_windows{P.isshown.id,1};
+        NV = DTB__section__NV_windows{P.isshown.id,1};
+        
         set(hgui,'CurrentAxes',h_ax(1));
         %%%           P.WNDOWS_FFT{dat_id,cc}; %VEN
         %        contourf(xvec, zvec, DD, linspace(A(1),A(2),A(3)),'EdgeColor','none')
@@ -5598,18 +6263,14 @@ fprintf('[READY !]\n');
         end
 
         %% Show windows
-        WIDS = DTB{P.isshown.id,1}.wndows.indexes;
-        WOKS = DTB{P.isshown.id,1}.wndows.is_ok;
+        WIDS = DTB__windows__indexes{P.isshown.id,1};
+        WOKS = DTB__windows__is_ok{P.isshown.id,1};
         if(~isempty(WIDS))
             ya = min(Fvec);
             yb = max(Fvec);
             ypatch = [ya ya yb yb];
             Nwin = size(WIDS,1);
-            if(Angular_on_of==0)
-                nc=3;
-            else
-                nc = 1;
-            end
+            nc=3;
             for s = 1:nc
                 set(hgui,'CurrentAxes',h_ax(s));
                 for w = 1:Nwin
@@ -5659,14 +6320,15 @@ fprintf('[READY !]\n');
         hold(h_ax(2),'off')
         hold(h_ax(3),'off')
     end
-    function Graphic_update_hvsr_average_curve(newfigure)%4         H/V average
-        cw = 0.5;
+    function Graphic_update_hvsr_average_curve(newfigure)%4         H/V average        
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        is_drawing();
+        cw = 0.5;
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be setted
+        if isempty(DTB__section__Frequency_Vector{ii,1}); return; end% Fvec must be setted
 
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
         if(newfigure)
             hlocal=figure('name',strcat('Average HVSR (mode-1): ID=',num2str(P.isshown.id)));
             hgui = hlocal;
@@ -5684,23 +6346,23 @@ fprintf('[READY !]\n');
         end
         %
         %
-        HVo = DTB{P.isshown.id,1}.hvsr.curve_full;
+        HVo = DTB__hvsr__curve_full{P.isshown.id,1};
 % %                 ERo = DTB{P.isshown.id,1}.hvsr.error_full;
-        HVc = DTB{P.isshown.id,1}.hvsr.curve;     
+        HVc = DTB__hvsr__curve{P.isshown.id,1};     
 % %                 ERc = DTB{P.isshown.id,1}.hvsr.error;
-        EVc = DTB{P.isshown.id,1}.hvsr.curve_EV;
-        NVc = DTB{P.isshown.id,1}.hvsr.curve_NV;
+        EVc = DTB__hvsr__curve_EV{P.isshown.id,1};
+        NVc = DTB__hvsr__curve_NV{P.isshown.id,1};
         %
-        CONFo = DTB{P.isshown.id,1}.hvsr.confidence95_full;% confidence 95%
-        CONFc = DTB{P.isshown.id,1}.hvsr.confidence95;
+        CONFo = DTB__hvsr__confidence95_full{P.isshown.id,1};% confidence 95%
+        CONFc = DTB__hvsr__confidence95{P.isshown.id,1};
         %
         fmin = str2double( get(hT3_PA_edit_fmin,'string'));
         fmax = str2double( get(hT3_PA_edit_fmax,'string'));
         %
-        fpeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
-        apeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_amplitude;% user selection is always preferred
-        fpeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence;% user selection is always preferred
-        apeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_amplitude;% user selection is always preferred
+        fpeak_user = DTB__hvsr__user_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
+        apeak_user = DTB__hvsr__user_main_peak_amplitude(P.isshown.id,1);% user selection is always preferred
+        fpeak_auto = DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
+        apeak_auto = DTB__hvsr__auto_main_peak_amplitude(P.isshown.id,1);% user selection is always preferred
         %P.info__curve_thickness 
         %% AXES 1
         set(hgui,'CurrentAxes',h_ax(1));
@@ -5716,10 +6378,10 @@ fprintf('[READY !]\n');
             %
             semilogx(h_ax(1),Fvec, (0*Fvec+1),'k','LineWidth',P.info__curve_thickness);
 
-            if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
+            if ~isnan(DTB__hvsr__user_main_peak_frequence(P.isshown.id,1))
                 semilogx(fpeak_user*[1,1],[0,1.1*apeak_user],'diamond-g','LineWidth',P.info__curve_thickness);
             end
-            if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
+            if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
                 semilogx(fpeak_auto*[1,1],[0,1.1*apeak_auto],'diamond-r','LineWidth',P.info__curve_thickness);
             end
 
@@ -5735,10 +6397,10 @@ fprintf('[READY !]\n');
             %
             plot(h_ax(1),Fvec, (0*Fvec+1),'k','LineWidth',P.info__curve_thickness);
             %plot(fpeak,apeak,'diamondr')
-            if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
+            if ~isnan(DTB__hvsr__user_main_peak_frequence(P.isshown.id,1))
                 plot(fpeak_user*[1,1],[0,1.1*apeak_user],'diamond-g','LineWidth',P.info__curve_thickness);
             end
-            if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
+            if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
                 plot(fpeak_auto*[1,1],[0,1.1*apeak_auto],'diamond-r','LineWidth',P.info__curve_thickness);
             end
         end
@@ -5832,14 +6494,15 @@ fprintf('[READY !]\n');
         %
         drawnow
     end
-    function Graphic_update_hvsr_H_V_Compare(newfigure)%5           H/V, compare V E N 
-        cw=0.5;
+    function Graphic_update_hvsr_H_V_Compare(newfigure)%5           H/V, compare V E N        
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        is_drawing();
+        cw=0.5;
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be setted
+        if isempty(DTB__section__Frequency_Vector{ii,1}); return; end% Fvec must be setted
         %
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
         if(newfigure)
             hlocal=figure('name',strcat('Average HVSR (mode-1): ID=',num2str(P.isshown.id)));
             hgui = hlocal;
@@ -5857,19 +6520,19 @@ fprintf('[READY !]\n');
         end
         %
         %
-        HVc = DTB{P.isshown.id,1}.hvsr.curve;
+        HVc = DTB__hvsr__curve{P.isshown.id,1};
 % %                 ERc = DTB{P.isshown.id,1}.hvsr.error;
-        EVc = DTB{P.isshown.id,1}.hvsr.curve_EV;
-        NVc = DTB{P.isshown.id,1}.hvsr.curve_NV;
-        CONFc = DTB{P.isshown.id,1}.hvsr.confidence95;
+        EVc = DTB__hvsr__curve_EV{P.isshown.id,1};
+        NVc = DTB__hvsr__curve_NV{P.isshown.id,1};
+        CONFc = DTB__hvsr__confidence95{P.isshown.id,1};
         %
         fmin = str2double( get(hT3_PA_edit_fmin,'string'));
         fmax = str2double( get(hT3_PA_edit_fmax,'string'));
         %
-        fpeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
-        apeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_amplitude;% user selection is always preferred
-        fpeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence;% user selection is always preferred
-        apeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_amplitude;% user selection is always preferred
+        fpeak_user = DTB__hvsr__user_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
+        apeak_user = DTB__hvsr__user_main_peak_amplitude(P.isshown.id,1);% user selection is always preferred
+        fpeak_auto = DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
+        apeak_auto = DTB__hvsr__auto_main_peak_amplitude(P.isshown.id,1);% user selection is always preferred
         %P.info__curve_thickness 
         %% AXES 1
         set(hgui,'CurrentAxes',h_ax(1));
@@ -5884,10 +6547,10 @@ fprintf('[READY !]\n');
             %
             semilogx(h_ax(1),Fvec, (0*Fvec+1),'k','LineWidth',P.info__curve_thickness);
 
-            if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
+            if ~isnan(DTB__hvsr__user_main_peak_frequence(P.isshown.id,1))
                 semilogx(fpeak_user*[1,1],[0,1.1*apeak_user],'diamond-g','LineWidth',P.info__curve_thickness);
             end
-            if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
+            if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
                 semilogx(fpeak_auto*[1,1],[0,1.1*apeak_auto],'diamond-r','LineWidth',P.info__curve_thickness);
             end
 
@@ -5903,10 +6566,10 @@ fprintf('[READY !]\n');
             %
             plot(h_ax(1),Fvec, (0*Fvec+1),'k','LineWidth',P.info__curve_thickness);
             %plot(fpeak,apeak,'diamondr')
-            if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
+            if ~isnan(DTB__hvsr__user_main_peak_frequence(P.isshown.id,1))
                 plot(fpeak_user*[1,1],[0,1.1*apeak_user],'diamond-g','LineWidth',P.info__curve_thickness);
             end
-            if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
+            if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
                 plot(fpeak_auto*[1,1],[0,1.1*apeak_auto],'diamond-r','LineWidth',P.info__curve_thickness);
             end
         end
@@ -5919,9 +6582,9 @@ fprintf('[READY !]\n');
         %
         %% AXES 2
         set(hgui,'CurrentAxes',h_ax(2));
-        average_E = DTB{P.isshown.id,1}.section.Average_E;
-        average_N = DTB{P.isshown.id,1}.section.Average_N;
-        average_V = DTB{P.isshown.id,1}.section.Average_V;
+        average_E = DTB__section__Average_E{P.isshown.id,1};
+        average_N = DTB__section__Average_N{P.isshown.id,1};
+        average_V = DTB__section__Average_V{P.isshown.id,1};
         if P.Flags.SpectrumAxisMode==0
             hold(h_ax(2),'off')
             semilogx(h_ax(2),Fvec, average_V,'r','LineWidth',P.error_curve_thickness);
@@ -5985,11 +6648,12 @@ fprintf('[READY !]\n');
     end   
     function Graphic_update_hvsr_all_curves(newfigure)%6            H/V all curves
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        is_drawing();
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be setted
+        if isempty(DTB__section__Frequency_Vector{ii,1}); return; end% Fvec must be setted
         %
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
         if(newfigure)
             hlocal=figure('name',strcat('Average HVSR (mode-2): ID=',num2str(P.isshown.id)));
             hgui = hlocal;
@@ -6006,15 +6670,15 @@ fprintf('[READY !]\n');
             cla(h_ax(3));
         end
 
-        Nwin = DTB{1,1}.wndows.number;
+        Nwin = DTB__windows__number(1,1);
         colrs = Pfunctions__get_rgb_colors(Nwin);% windows-colors
         %% Curves in AXIS (1)
         set(hgui,'CurrentAxes',h_ax(1));
-        DD = DTB{ii,1}.hvsr.HV_all_windows;
+        DD = DTB__hvsr__HV_all_windows{ii,1};
         hold(h_ax(1),'off');
         cla(h_ax(1));
         for cc = 1:Nwin
-            if (DTB{P.isshown.id,1}.wndows.is_ok(cc)==0)
+            if (DTB__windows__is_ok{P.isshown.id,1}(cc)==0)
                 HVa = DD(:,cc);
                 clrr = 0.8*[1 1 1];
                 if P.Flags.SpectrumAxisMode==0
@@ -6026,7 +6690,7 @@ fprintf('[READY !]\n');
             end
         end
         for cc = 1:Nwin
-            if (DTB{P.isshown.id,1}.wndows.is_ok(cc)==1)
+            if (DTB__windows__is_ok{P.isshown.id,1}(cc)==1)
                 HVa = DD(:,cc);
                 clrr = colrs(cc,:);
                 if P.Flags.SpectrumAxisMode==0
@@ -6038,7 +6702,7 @@ fprintf('[READY !]\n');
             end
         end
         %
-        HVc = DTB{P.isshown.id,1}.hvsr.curve;
+        HVc = DTB__hvsr__curve{P.isshown.id,1};
         semilogx(h_ax(1),Fvec, HVc,'k','LineWidth',P.hvsr__curve_thickness);
         %
         plot(h_ax(1),Fvec, (0*Fvec+1),'k','LineWidth',P.info__curve_thickness);
@@ -6047,11 +6711,11 @@ fprintf('[READY !]\n');
         ylabel('H/V','fontweight','bold')
         %% Curves in AXIS (2)
         set(hgui,'CurrentAxes',h_ax(2));
-        DD = DTB{ii,1}.hvsr.EV_all_windows;
+        DD = DTB__hvsr__EV_all_windows{ii,1};
         hold(h_ax(2),'off');
         cla(h_ax(2));
         for cc = 1:Nwin
-            if (DTB{P.isshown.id,1}.wndows.is_ok(cc)==0)
+            if (DTB__windows__is_ok{P.isshown.id,1}(cc)==0)
                 HVa = DD(:,cc);
                 clrr = 0.8*[1 1 1];
                 if P.Flags.SpectrumAxisMode==0
@@ -6063,7 +6727,7 @@ fprintf('[READY !]\n');
             end
         end
         for cc = 1:Nwin
-            if (DTB{P.isshown.id,1}.wndows.is_ok(cc)==1)
+            if (DTB__windows__is_ok{P.isshown.id,1}(cc)==1)
                 HVa = DD(:,cc);
                 clrr = colrs(cc,:);
                 if P.Flags.SpectrumAxisMode==0
@@ -6075,7 +6739,7 @@ fprintf('[READY !]\n');
             end
         end
         %
-        EVc = DTB{P.isshown.id,1}.hvsr.curve_EV;
+        EVc = DTB__hvsr__curve_EV{P.isshown.id,1};
         semilogx(h_ax(2),Fvec, EVc,'k','LineWidth',P.hvsr__curve_thickness);
         %
         plot(h_ax(2),Fvec, (0*Fvec+1),'k','LineWidth',P.info__curve_thickness);
@@ -6084,11 +6748,11 @@ fprintf('[READY !]\n');
         ylabel('EW/V','fontweight','bold')
         %% Curves in AXIS (3)
         set(hgui,'CurrentAxes',h_ax(3));
-        DD = DTB{ii,1}.hvsr.EV_all_windows;
+        DD = DTB__hvsr__EV_all_windows{ii,1};
         hold(h_ax(3),'off');
         cla(h_ax(3));
         for cc = 1:Nwin
-            if (DTB{P.isshown.id,1}.wndows.is_ok(cc)==0)
+            if (DTB__windows__is_ok{P.isshown.id,1}(cc)==0)
                 HVa = DD(:,cc);
                 clrr = 0.8*[1 1 1];
                 if P.Flags.SpectrumAxisMode==0
@@ -6100,7 +6764,7 @@ fprintf('[READY !]\n');
             end
         end
         for cc = 1:Nwin
-            if (DTB{P.isshown.id,1}.wndows.is_ok(cc)==1)
+            if (DTB__windows__is_ok{P.isshown.id,1}(cc)==1)
                 HVa = DD(:,cc);
                 clrr = colrs(cc,:);
                 if P.Flags.SpectrumAxisMode==0
@@ -6112,7 +6776,7 @@ fprintf('[READY !]\n');
             end
         end
         %
-        NVc = DTB{P.isshown.id,1}.hvsr.curve_NV;
+        NVc = DTB__hvsr__curve_NV{P.isshown.id,1};
         semilogx(h_ax(3),Fvec, NVc,'k','LineWidth',P.hvsr__curve_thickness);
         %
         plot(h_ax(3),Fvec, (0*Fvec+1),'k','LineWidth',P.info__curve_thickness);
@@ -6135,12 +6799,13 @@ fprintf('[READY !]\n');
     end   
     function Graphic_update_hvsr_180_windows(newfigure)%7           Directional image
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        is_drawing();
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be already set
-        if DTB{P.isshown.id,1}.hvsr180.angle_id==1; return; end 
+        if isempty(DTB__section__Frequency_Vector{ii,1}); return; end% Fvec must be already set
+        if DTB__hvsr180__angle_id(P.isshown.id,1)==1; return; end 
         %
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
         %
         if(newfigure)
             hlocal=figure('name',strcat('Directional H/V (mode-2): ID=',num2str(P.isshown.id)));
@@ -6157,16 +6822,16 @@ fprintf('[READY !]\n');
             cla(h_ax(2));
             cla(h_ax(3));
         end
-        th = DTB{P.isshown.id,1}.hvsr180.angle_step;
-        DD = DTB{P.isshown.id,1}.hvsr180.spectralratio;
+        th = DTB__hvsr180__angle_step(P.isshown.id,1);
+        DD = DTB__hvsr180__spectralratio{P.isshown.id,1};
         DD = [DD, DD(:,1)];
         mi = min(min(DD)); 
         ma = max(max(DD));
-        maxn = max(DTB{P.isshown.id,1}.hvsr.curve);      
-        tcrv = 135*(DTB{P.isshown.id,1}.hvsr.curve./maxn);
+        maxn = max(DTB__hvsr__curve{P.isshown.id,1});      
+        tcrv = 135*(DTB__hvsr__curve{P.isshown.id,1}./maxn);
         tcry =(0*tcrv + 135/maxn); 
-        fpeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
-        fpeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence;% user selection is always preferred
+        fpeak_user = DTB__hvsr__user_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
+        fpeak_auto = DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
         
         switch USER_PREFERENCE_hvsr_directional_reference_system
             case 'compass'
@@ -6195,7 +6860,7 @@ fprintf('[READY !]\n');
         plot(h_ax(1),tcry,Fvec,'w','linewidth',1)
         %
          if experimental_directionality==1
-            prd = DTB{P.isshown.id,1}.hvsr180.preferred_direction;%  expressed in E=0 N=90
+            prd = DTB__hvsr180__preferred_direction{P.isshown.id,1};%  expressed in E=0 N=90
             if(strcmp(USER_PREFERENCE_hvsr_directional_reference_system,'compass'))
                 % transform from theta in [E=0 N=90 W=180] to theta2 in [W=-90 N=0 E=90]:  theta2 = 90-theta  
                 prd = -prd+90;
@@ -6212,11 +6877,11 @@ fprintf('[READY !]\n');
             end 
         end
        %
-        if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
+        if ~isnan(DTB__hvsr__user_main_peak_frequence(P.isshown.id,1))
             plot(h_ax(1), angles_span,[1,1]*fpeak_user,'w','linewidth',P.info__curve_thickness)
             text(angles_span(1),fpeak_user,'User','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
         end
-        if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
+        if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
             plot(h_ax(1), angles_span,[1,1]*fpeak_auto,'w','linewidth',P.info__curve_thickness)
             text(angles_span(1),fpeak_auto,'Auto','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
         end  
@@ -6257,10 +6922,10 @@ fprintf('[READY !]\n');
         hold(h_ax(2),'on');
         plot(h_ax(2),tcrv,Fvec,'w','linewidth',2)
         plot(h_ax(2),(0*tcrv + 135/maxn),Fvec,'w','linewidth',1)
-        if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
+        if ~isnan(DTB__hvsr__user_main_peak_frequence(P.isshown.id,1))
             plot(h_ax(2), angles_span,[1,1]*fpeak_user,'w','linewidth',1)
         end
-        if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
+        if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
             plot(h_ax(2), angles_span,[1,1]*fpeak_auto,'w','linewidth',1)
         end 
         %
@@ -6283,10 +6948,10 @@ fprintf('[READY !]\n');
         hold(h_ax(3),'on');
         plot(h_ax(3),tcrv,Fvec,'w','linewidth',2)
         plot(h_ax(3),tcry,Fvec,'w','linewidth',1)
-        if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
+        if ~isnan(DTB__hvsr__user_main_peak_frequence(P.isshown.id,1))
             plot(h_ax(3), angles_span,[1,1]*fpeak_user,'w','linewidth',1)
         end
-        if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
+        if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
             plot(h_ax(3), angles_span,[1,1]*fpeak_auto,'w','linewidth',1)
         end 
         %
@@ -6313,12 +6978,13 @@ fprintf('[READY !]\n');
     end
     function Graphic_update_hvsr_180_curves(newfigure)%8            Directional curves
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        is_drawing();
         ii = P.isshown.id;
-        if isempty(DTB{ii,1}.section.Frequency_Vector); return; end% Fvec must be setted
-        if DTB{P.isshown.id,1}.hvsr180.angle_id==1; return; end 
+        if isempty(DTB__section__Frequency_Vector{ii,1}); return; end% Fvec must be setted
+        if DTB__hvsr180__angle_id(P.isshown.id,1)==1; return; end 
         %
-        df = DTB{ii,1}.section.Frequency_Vector(3);
-        Fvec = df*(  (DTB{ii,1}.section.Frequency_Vector(1)-1) : (DTB{ii,1}.section.Frequency_Vector(2)-1) );
+        df = DTB__section__Frequency_Vector{ii,1}(3);
+        Fvec = df*(  (DTB__section__Frequency_Vector{ii,1}(1)-1) : (DTB__section__Frequency_Vector{ii,1}(2)-1) );
 
         if(newfigure)
             hlocal=figure('name',strcat('Directional H/V (mode-1): ID=',num2str(P.isshown.id)));
@@ -6335,18 +7001,18 @@ fprintf('[READY !]\n');
             cla(h_ax(2));
             cla(h_ax(3));
         end
-        th = DTB{P.isshown.id,1}.hvsr180.angle_step;
+        th = DTB__hvsr180__angle_step(P.isshown.id,1);
         %angles = 0:th:180;
-        DD = DTB{P.isshown.id,1}.hvsr180.spectralratio;
+        DD = DTB__hvsr180__spectralratio{P.isshown.id,1};
         DD = [DD, DD(:,1)];
         mi = min(min(DD)); 
         ma = max(max(DD));
         %
-        maxn = max(DTB{P.isshown.id,1}.hvsr.curve);      
-        tcrv = 135*(DTB{P.isshown.id,1}.hvsr.curve./maxn);
+        maxn = max(DTB__hvsr__curve{P.isshown.id,1});      
+        tcrv = 135*(DTB__hvsr__curve{P.isshown.id,1}./maxn);
         tcry =(0*tcrv + 135/maxn); 
-        fpeak_user = DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
-        fpeak_auto = DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence;% user selection is always preferred
+        fpeak_user = DTB__hvsr__user_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
+        fpeak_auto = DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
         
          switch USER_PREFERENCE_hvsr_directional_reference_system
             case 'compass'
@@ -6375,11 +7041,11 @@ fprintf('[READY !]\n');
         plot(h_ax(1),tcrv,Fvec,'w','linewidth',2)
         plot(h_ax(1),tcry,Fvec,'w','linewidth',1)
         %
-        if ~isnan(DTB{P.isshown.id,1}.hvsr.user_main_peak_frequence)
+        if ~isnan(DTB__hvsr__user_main_peak_frequence(P.isshown.id,1))
             plot(h_ax(1), angles_span,[1,1]*fpeak_user,'w','linewidth',P.info__curve_thickness)
             text(angles_span(1),fpeak_user,'User','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
         end
-        if ~isnan(DTB{P.isshown.id,1}.hvsr.auto_main_peak_frequence)
+        if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
             plot(h_ax(1), angles_span,[1,1]*fpeak_auto,'w','linewidth',P.info__curve_thickness)
             text(angles_span(1),fpeak_auto,'Auto','Color','w','fontweight','bold','FontSize',USER_PREFERENCE_interface_objects_fontsize)
         end  
@@ -6464,6 +7130,7 @@ fprintf('[READY !]\n');
     end
 %%    plot: 2-D
     function Graphics_2dView_hvsr_main_frequence(newfigure)
+        is_drawing();
         if(newfigure)
             h_fig = figure('name','Main Resonant Frequency Map');
             h_ax= gca;%get(h_fig,'CurrentAxes');
@@ -6486,17 +7153,17 @@ fprintf('[READY !]\n');
         for n = 1:Ndata
             Xmask(n) = SURVEYS{n,1}(1);
             Ymask(n) = SURVEYS{n,1}(2);
-            if DTB{n,1}.status~=2
-                if isnan(DTB{n,1}.hvsr.auto_main_peak_amplitude) && isnan(DTB{n,1}.hvsr.user_main_peak_amplitude)
+            if DTB__status(n,1)~=2
+                if isnan(DTB__hvsr__auto_main_peak_amplitude(n,1)) && isnan(DTB__hvsr__user_main_peak_amplitude(n,1))
                     continue;
                 end
                 d=d+1;
                 Xscatt(d) = SURVEYS{n,1}(1);
                 Yscatt(d) = SURVEYS{n,1}(2);
-                if ~isnan(DTB{n,1}.hvsr.user_main_peak_frequence)
-                    Vscatt(d) = DTB{n,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
+                if ~isnan(DTB__hvsr__user_main_peak_frequence(n,1))
+                    Vscatt(d) = DTB__hvsr__user_main_peak_frequence(n,1);% user selection is always preferred
                 else
-                    Vscatt(d) = DTB{n,1}.hvsr.auto_main_peak_frequence;
+                    Vscatt(d) = DTB__hvsr__auto_main_peak_frequence(n,1);
                 end
             end
         end
@@ -6505,7 +7172,6 @@ fprintf('[READY !]\n');
         Vscatt = Vscatt(1:d);
         %
         if d>2
-            is_busy();
             nx = str2double( get(T4_dx,'string') );
             ny = str2double( get(T4_dy,'string') );
             dl = 0;% percect%
@@ -6563,8 +7229,8 @@ fprintf('[READY !]\n');
             if strcmp( get(H.menu.view.view2d_Stations,'Checked'), 'on')    
                 for d = 1:Ndata
                     clr = 'k';
-                    if DTB{d,1}.status ~= 2
-                        if ~isnan(DTB{d,1}.hvsr.user_main_peak_frequence)
+                    if DTB__status(d,1) ~= 2
+                        if ~isnan(DTB__hvsr__user_main_peak_frequence(d,1))
                             clr = 'g';
     %                         plot(h_ax,Xscatt(d),Yscatt(d),'o','Color','g','MarkerFaceColor','g');% user selected
                         else
@@ -6595,11 +7261,12 @@ fprintf('[READY !]\n');
             %% PROPORTIONS
             daspect(h_ax, P.data_aspectis_aerialmap)
             xlabel(h_ax,'X (E/W).   Colorbar: Frequency','fontweight','bold')
-            ylabel(h_ax,'Y (N/S)','fontweight','bold')
-            is_done();
+            ylabel(h_ax,'Y (N/S)','fontweight','bold')            
         end
+        is_done();
     end
     function Graphics_2dView_hvsr_main_amplitude(newfigure)
+        is_drawing();
         if(newfigure)
             h_fig = figure('name','Spectrum of Windows');
             h_ax= gca;%get(h_fig,'CurrentAxes');
@@ -6623,20 +7290,18 @@ fprintf('[READY !]\n');
         for n = 1:Ndata
             Xmask(n) = SURVEYS{n,1}(1);
             Ymask(n) = SURVEYS{n,1}(2);
-            if DTB{n,1}.status ~= 2
-                if isnan(DTB{n,1}.hvsr.auto_main_peak_amplitude) && isnan(DTB{n,1}.hvsr.user_main_peak_amplitude)
+            if DTB__status(n,1) ~= 2
+                if isnan(DTB__hvsr__auto_main_peak_amplitude(n,1)) && isnan(DTB__hvsr__user_main_peak_amplitude(n,1))
                     continue;
                 end
                 %
                 d=d+1;
-                %             df = DTB{d,1}.wndows.info(4) ;
-                %
                 Xscatt(d) = SURVEYS{n,1}(1);
                 Yscatt(d) = SURVEYS{n,1}(2);
-                if ~isnan(DTB{n,1}.hvsr.user_main_peak_amplitude)
-                    Vscatt(d) = DTB{n,1}.hvsr.user_main_peak_amplitude;
+                if ~isnan(DTB__hvsr__user_main_peak_amplitude(n,1))
+                    Vscatt(d) = DTB__hvsr__user_main_peak_amplitude(n,1);
                 else
-                    Vscatt(d) = DTB{n,1}.hvsr.auto_main_peak_amplitude;
+                    Vscatt(d) = DTB__hvsr__auto_main_peak_amplitude(n,1);
                 end
             end
         end
@@ -6646,8 +7311,6 @@ fprintf('[READY !]\n');
         if d<3; return; end
         %
         %
-        is_busy();
-        %>> warning('FIX selectable x-y points')
         nx = str2double( get(T4_dx,'string') );
         ny = str2double( get(T4_dy,'string') );
         colorstyle_id   = get(h_contour_color_style,'value');
@@ -6663,7 +7326,7 @@ fprintf('[READY !]\n');
 %             if ~isempty(TOPOGRAPHY)
 %                 Xscatt = [Xscatt; TOPOGRAPHY(:,1)];
 %                 Yscatt = [Yscatt; TOPOGRAPHY(:,2)];
-%                 Vscatt = [Vscatt; 0*TOPOGRAPHY(:,1)];%<<<<<< FIX what is the best value to place here??
+%                 Vscatt = [Vscatt; 0*TOPOGRAPHY(:,1)];%<<<<<< DEVELOPMENT: what is the best value to place here??
 %             end
 %         end
         %% CONTOURS
@@ -6678,8 +7341,8 @@ fprintf('[READY !]\n');
         if strcmp( get(H.menu.view.view2d_Stations,'Checked'), 'on')    
             for d = 1:Ndata
                 clr = 'k';
-                if DTB{d,1}.status ~= 2
-                    if ~isnan(DTB{d,1}.hvsr.user_main_peak_frequence)
+                if DTB__status(d,1) ~= 2
+                    if ~isnan(DTB__hvsr__user_main_peak_frequence(d,1))
                         clr = 'g';
 %                         plot(h_ax,Xscatt(d),Yscatt(d),'o','Color','g','MarkerFaceColor','g');% user selected
                     else
@@ -6704,8 +7367,8 @@ fprintf('[READY !]\n');
         if strcmp( get(H.menu.view.view2d_Stations,'Checked'), 'on')    
             for d = 1:Ndata
                 clr = 'k';
-                if DTB{d,1}.status ~= 2
-                    if ~isnan(DTB{d,1}.hvsr.user_main_peak_frequence)
+                if DTB__status(d,1) ~= 2
+                    if ~isnan(DTB__hvsr__user_main_peak_frequence(d,1))
                         clr = 'g';
 %                         plot(h_ax,Xscatt(d),Yscatt(d),'o','Color','g','MarkerFaceColor','g');% user selected
                     else
@@ -6757,9 +7420,9 @@ fprintf('[READY !]\n');
         xlabel(h_ax,'X (E/W). Colorbar: Amplitude','fontweight','bold')
         ylabel(h_ax,'Y (N/S)','fontweight','bold')
         is_done();
-
     end
     function Graphics_2dView_hvsr_direction_at_main_peak(newfigure)
+        is_drawing();
         if(newfigure)
             h_fig = figure('name','no name specified');
             h_ax= gca;%get(h_fig,'CurrentAxes');
@@ -6788,25 +7451,25 @@ fprintf('[READY !]\n');
         ddf =str2double( get(h_deltafmainpeak,'string') )/2;
         d=0;
         for n = 1:Ndata
-            if (DTB{n,1}.status ~= 2) && (DTB{n,1}.hvsr180.angle_id>1)
+            if (DTB__status(n,1) ~= 2) && (DTB__hvsr180__angle_id(n,1)>1)
                 d=d+1;
                 active_stations(d) = n;
                 Xscatt(d) = SURVEYS{n,1}(1);
                 Yscatt(d) = SURVEYS{n,1}(2);
-                if ~isnan(DTB{n,1}.hvsr.user_main_peak_amplitude)
-                    PeakId = DTB{n,1}.hvsr.user_main_peak_id_in_section;
-                    PeakFr = DTB{n,1}.hvsr.user_main_peak_frequence;% 20180719
+                if ~isnan(DTB__hvsr__user_main_peak_amplitude(n,1))
+                    PeakId = DTB__hvsr__user_main_peak_id_in_section(n,1);
+                    PeakFr = DTB__hvsr__user_main_peak_frequence(n,1);% 20180719
                 else
-                    PeakId = DTB{n,1}.hvsr.auto_main_peak_id_in_section;
-                    PeakFr = DTB{n,1}.hvsr.auto_main_peak_frequence;% 20180719
+                    PeakId = DTB__hvsr__auto_main_peak_id_in_section(n,1);
+                    PeakFr = DTB__hvsr__auto_main_peak_frequence(n,1);% 20180719
                 end
-                Ampl(d)= DTB{n,1}.hvsr180.preferred_direction(PeakId,2);
+                Ampl(d)= DTB__hvsr180__preferred_direction{n,1}(PeakId,2);
                 %
                 % main peak
-                DirectionalPeakValues{d,1} = DTB{n,1}.hvsr180.spectralratio(PeakId, :);
+                DirectionalPeakValues{d,1} = DTB__hvsr180__spectralratio{n,1}(PeakId, :);
                 [~,c] = find(DirectionalPeakValues{d,1}==max(DirectionalPeakValues{d,1}));
                 MaindirectionId_i=c(1);%(d)=c(1);
-                theta = DTB{n,1}.hvsr180.angle_step;
+                theta = DTB__hvsr180__angle_step(n,1);
                 angles = 0:theta:(180-theta);
                 Grads(d) = angles(MaindirectionId_i);%(d));
                 % fprintf('[%d]  angle[%d]',n,Grads(d))
@@ -6814,25 +7477,24 @@ fprintf('[READY !]\n');
                 % around main peak (to be sure that not much variability is present)
                 % as of 20180719 ddf is defined as percentage
                 if ddf >0
-                    offseti = DTB{n,1}.section.Frequency_Vector(1);
-                    odf = DTB{n,1}.section.Frequency_Vector(3); 
+                    offseti = DTB__section__Frequency_Vector{n,1}(1);
+                    odf = DTB__section__Frequency_Vector{n,1}(3); 
                     ni1 = ceil( (PeakFr*(1-ddf/100))/odf )   -offseti ;%               20180719
                     ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%               20180719
                     istr = ni1; if istr<1; istr=1; end
-                    istp = ni2; if istp>size(DTB{n,1}.hvsr180.preferred_direction,1); istp=PeakId; end
+                    istp = ni2; if istp>size(DTB__hvsr180__preferred_direction{n,1},1); istp=PeakId; end
                     %
                     fprintf(' Frequency ids Min/Peak/Max  [%d   %d   %d] \n', ni1,  PeakId, ni2);
                     %fprintf(' Frequency  Range[%3.2f][%3.2f]   Peak at [%3.2f]\n',ni1*odf,ni2*odf, PeakFr);
                     %
                     ids =  istr:istp;
-                    directs = DTB{n,1}.hvsr180.preferred_direction(ids,1);
+                    directs = DTB__hvsr180__preferred_direction{n,1}(ids,1);
                     Df_Grads{d,1} = angles(directs);
-                    Df_Ampl{d,1}  = DTB{n,1}.hvsr180.preferred_direction(ids,2);
+                    Df_Ampl{d,1}  = DTB__hvsr180__preferred_direction{n,1}(ids,2);
                 end 
             end
         end
         if d>2
-            is_busy();
             Xscatt = Xscatt(1:d,1);
             Yscatt = Yscatt(1:d,1);
             Ampl   = Ampl(1:d,1);
@@ -6909,8 +7571,8 @@ fprintf('[READY !]\n');
             if strcmp( get(H.menu.view.view2d_Stations,'Checked'), 'on')    
                 for d = 1:Ndata
                     clr = 'k';
-                    if DTB{d,1}.status ~= 2
-                        if ~isnan(DTB{d,1}.hvsr.user_main_peak_frequence)
+                    if DTB__status(d,1) ~= 2
+                        if ~isnan(DTB__hvsr__user_main_peak_frequence(d,1))
                             clr = 'g';
     %                         plot(h_ax,Xscatt(d),Yscatt(d),'o','Color','g','MarkerFaceColor','g');% user selected
                         else
@@ -6978,12 +7640,12 @@ fprintf('[READY !]\n');
                 %
                 text( (xxp(1)+0.85*ddx), (yyp(1)+0.10*ddy), '\leftarrow', 'Color', 'r');
                 text( (xxp(1)+0.90*ddx), (yyp(1)+0.10*ddy), 'maximum');
-            end
-            %%
-            is_done();
+            end           
         end
+        is_done();
     end
     function Graphics_2dView_slice_at_specific_frequence(newfigure)
+        is_drawing();
         if(newfigure)
             h_fig = figure('name','Slice at specific Frequence');
             h_ax= gca;% et(h_fig,'CurrentAxes');
@@ -7004,20 +7666,18 @@ fprintf('[READY !]\n');
         Vscatt = zeros(Ndata,1);
         d=0;
         for n = 1:Ndata
-            if DTB{n,1}.status ~= 2
-                if isempty(DTB{ (d+1) ,1}.hvsr.curve); continue; end
+            if DTB__status(n,1) ~= 2
+                if isempty(DTB__hvsr__curve{ (d+1) ,1}); continue; end
                 d=d+1;
                 Xscatt(d) = SURVEYS{d,1}(1);
                 Yscatt(d) = SURVEYS{d,1}(2);
-                Vscatt(d) = DTB{d,1}.hvsr.curve(ii,1);% user selection is always preferred
+                Vscatt(d) = DTB__hvsr__curve{d,1}(ii,1);% user selection is always preferred
             end
         end
         Xscatt = Xscatt(1:d,1);
         Yscatt = Yscatt(1:d,1);
         Vscatt = Vscatt(1:d,1);
         if d>2
-            is_busy();
-            %>> warning('FIX selectable x-y points')
             nx = str2double( get(T4_dx,'string') );
             ny = str2double( get(T4_dy,'string') );
             %
@@ -7061,8 +7721,8 @@ fprintf('[READY !]\n');
             if strcmp( get(H.menu.view.view2d_Stations,'Checked'), 'on')    
                 for d = 1:Ndata
                     clr = 'k';
-                    if DTB{d,1}.status ~= 2
-                        if ~isnan(DTB{d,1}.hvsr.user_main_peak_frequence)
+                    if DTB__status(d,1) ~= 2
+                        if ~isnan(DTB__hvsr__user_main_peak_frequence(d,1))
                             clr = 'g';
     %                         plot(h_ax,Xscatt(d),Yscatt(d),'o','Color','g','MarkerFaceColor','g');% user selected
                         else
@@ -7095,11 +7755,12 @@ fprintf('[READY !]\n');
             %% PROPORTIONED
             daspect(h_ax, P.data_aspectis_aerialmap)
             xlabel(h_ax,'X (E/W). Colorbar: Amplitude','fontweight','bold')
-            ylabel(h_ax,'Y (N/S)','fontweight','bold')
-            is_done();
+            ylabel(h_ax,'Y (N/S)','fontweight','bold')           
         end
+        is_done();
     end
     function Graphics_plot_2d_profile(newfigure)%figure_handle, axes_handle, quantity)
+        is_drawing();
         quantity = P.Flags.View_2D_current_submode;
         if(newfigure)
             h_fig = figure('name',strcat('HVSR-Profiling: Profile ID=',num2str(P.profile.id)));
@@ -7127,7 +7788,6 @@ fprintf('[READY !]\n');
         if P.profile.id==0; return; end
         Nhv   = size(P.profile_ids{P.profile.id,1},1);
         if Nhv>1
-            is_busy();
             Profile_data = zeros(Nf,Nhv);
             Delete_columns = zeros(1, size(P.profile_ids{P.profile.id,1}, 1) );
             str='---';
@@ -7136,11 +7796,11 @@ fprintf('[READY !]\n');
                 case 1 % HVSR
                     for rr = 1:Nhv
                         cc = P.profile_ids{P.profile.id,1}(rr,1);% Id of hvsr curve involved in profile
-                        if DTB{cc,1}.status ~= 2
+                        if DTB__status(cc,1) ~= 2
                             % old
-                            df = DTB{cc,1}.section.Frequency_Vector(3);
-                            Fold = df*(  (DTB{cc,1}.section.Frequency_Vector(1)-1) : (DTB{cc,1}.section.Frequency_Vector(2)-1) );
-                            Cold = DTB{cc,1}.hvsr.curve;
+                            df = DTB__section__Frequency_Vector{cc,1}(3);
+                            Fold = df*(  (DTB__section__Frequency_Vector{cc,1}(1)-1) : (DTB__section__Frequency_Vector{cc,1}(2)-1) );
+                            Cold = DTB__hvsr__curve{cc,1};
                             % new
                             Cnew = spline(Fold,Cold, Fnew);
                             Profile_data(:,rr) = Cnew;
@@ -7152,11 +7812,11 @@ fprintf('[READY !]\n');
                 case 2 % HVSR-E
                     for rr = 1:Nhv
                         cc = P.profile_ids{P.profile.id,1}(rr,1);% Id of hvsr curve involved in profile
-                        if DTB{cc,1}.status ~= 2
+                        if DTB__status(cc,1) ~= 2
                             % old
-                            df = DTB{cc,1}.section.Frequency_Vector(3);
-                            Fold = df*(  (DTB{cc,1}.section.Frequency_Vector(1)-1) : (DTB{cc,1}.section.Frequency_Vector(2)-1) );
-                            Cold = DTB{cc,1}.hvsr.curve_EV;
+                            df = DTB__section__Frequency_Vector{cc,1}(3);
+                            Fold = df*(  (DTB__section__Frequency_Vector{cc,1}(1)-1) : (DTB__section__Frequency_Vector{cc,1}(2)-1) );
+                            Cold = DTB__hvsr__curve_EV{cc,1};
                             % new
                             Cnew = spline(Fold,Cold, Fnew);
                             Profile_data(:,rr) = Cnew;
@@ -7168,11 +7828,11 @@ fprintf('[READY !]\n');
                 case 3 % HVSR-N
                     for rr = 1:Nhv
                         cc = P.profile_ids{P.profile.id,1}(rr,1);% Id of hvsr curve involved in profile
-                        if DTB{cc,1}.status ~= 2
+                        if DTB__status(cc,1) ~= 2
                             % old
-                            df = DTB{cc,1}.section.Frequency_Vector(3);
-                            Fold = df*(  (DTB{cc,1}.section.Frequency_Vector(1)-1) : (DTB{cc,1}.section.Frequency_Vector(2)-1) );
-                            Cold = DTB{cc,1}.hvsr.curve_NV;
+                            df = DTB__section__Frequency_Vector{cc,1}(3);
+                            Fold = df*(  (DTB__section__Frequency_Vector{cc,1}(1)-1) : (DTB__section__Frequency_Vector{cc,1}(2)-1) );
+                            Cold = DTB__hvsr__curve_NV{cc,1};
                             % new
                             Cnew = spline(Fold,Cold, Fnew);
                             Profile_data(:,rr) = Cnew;
@@ -7188,10 +7848,10 @@ fprintf('[READY !]\n');
                 case 1% normalize columns according to the amplitude of peak
                     for rr = 1:Nhv
                         cc = P.profile_ids{P.profile.id,1}(rr,1);% Id of hvsr curve involved in profile
-                        if ~isnan(DTB{cc,1}.hvsr.user_main_peak_amplitude)
-                            aa = DTB{cc,1}.hvsr.user_main_peak_amplitude;
+                        if ~isnan(DTB__hvsr__user_main_peak_amplitude(cc,1))
+                            aa = DTB__hvsr__user_main_peak_amplitude(cc,1);
                         else
-                            aa = DTB{cc,1}.hvsr.auto_main_peak_amplitude;
+                            aa = DTB__hvsr__auto_main_peak_amplitude(cc,1);
                         end  
                         Profile_data(:,rr) = Profile_data(:,rr)./aa;
                     end
@@ -7229,7 +7889,7 @@ fprintf('[READY !]\n');
             rr = P.profile_ids{P.profile.id,1}(:,2);
             for m = 1:size(P.profile_ids{P.profile.id,1},1)
                 cc = P.profile_ids{P.profile.id,1}(m,1);% Id of hvsr curve involved in profile
-                if DTB{cc,1}.status ~= 2
+                if DTB__status(cc,1) ~= 2
                     plot(h_ax,  rr(m)*[1,1],zn,'--','Color','g','LineWidth',1);
                     plot(h_ax,  rr,zz,'og','MarkerSize',5,'Color','g','MarkerFaceColor','g');
                 else
@@ -7262,20 +7922,21 @@ fprintf('[READY !]\n');
                 
                 
             end
-            set(h_ax,'Visible','on');
-            is_done();
+            set(h_ax,'Visible','on');           
         else
             plot(h_ax,0,0);
             strimes = sprintf('Profile %d comprise less than 2 stations. Interpolation could not be performed.',P.profile.id);
             legend(h_ax,strimes)
         end
+        is_done();
 	end
 %%    plot: 3-D
-    function Graphics_3dView_quiver(newfigure, mode)
+    function Graphics_3dView_quiver(newfigure, mode)      
         if isempty(SURVEYS); return; end
+        is_drawing();
         status = 0;
         for ss=1:size(SURVEYS,1)
-            if DTB{ss,1}.wndows.number~=0; status = 1; break; end
+            if DTB__windows__number(ss,1)~=0; status = 1; break; end
         end
         if status == 0; return; end
         %
@@ -7288,12 +7949,12 @@ fprintf('[READY !]\n');
         cid = P.isshown.id_Vf;
         if cid==0; return; end
         if mode==3% decide if to procede
-            if(isempty(DTB{cid,1}.hvsr180.spectralratio))
+            if(isempty(DTB__hvsr180__spectralratio{cid,1}))
                 Message = 'No Directional-HV was peformed for this file';
                 msgbox(Message,'INFO')
                 return;
             end
-            if DTB{cid,1}.status==2
+            if DTB__status(cid,1)==2
                 Message = 'This file was marked as "EXLUDED" froom the survey';
                 msgbox(Message,'INFO')
                 return;
@@ -7316,7 +7977,6 @@ fprintf('[READY !]\n');
         Ndata = size(SURVEYS,1);
         ddf =str2double( get(h_deltafmainpeak3D,'string') )/2;
         if Ndata>0
-            is_busy();
             surface_locations = zeros(Ndata,3);
             scalearrows = str2double( get(T5_arrow_scale,'string') );%scale arrows as percent/100 of maximum size
             %active_station_bools = zeros(Ndata,1);
@@ -7327,16 +7987,16 @@ fprintf('[READY !]\n');
                 %% embedded surface
                 dd = 0;
                 for d = 1:Ndata
-                    if DTB{d,1}.status~=2
+                    if DTB__status(d,1)~=2
                         dd = dd+1;
                         active_station_ids(dd,1) =d;
                         %active_station_bools(d,1)=1;
                         surface_locations(d,1) = SURVEYS{d,1}(1);
                         surface_locations(d,2) = SURVEYS{d,1}(2);
-                        if ~isnan(DTB{d,1}.hvsr.user_main_peak_amplitude)
-                            surface_locations(d,3) = 1/DTB{d,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
+                        if ~isnan(DTB__hvsr__user_main_peak_amplitude(d,1))
+                            surface_locations(d,3) = 1/DTB__hvsr__user_main_peak_frequence(d,1);% user selection is always preferred
                         else
-                            surface_locations(d,3) = 1/DTB{d,1}.hvsr.auto_main_peak_frequence;
+                            surface_locations(d,3) = 1/DTB__hvsr__auto_main_peak_frequence(d,1);
                         end                
                     end
                 end
@@ -7348,7 +8008,7 @@ fprintf('[READY !]\n');
                     %%    measure points plot
                     for d = 1:length(active_station_ids)
                         hvid = active_station_ids(d);
-                        if ~isnan(DTB{hvid,1}.hvsr.user_main_peak_amplitude)
+                        if ~isnan(DTB__hvsr__user_main_peak_amplitude(hvid,1))
                             plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'o','Color','y','MarkerFaceColor','y');% user selected
                         else
                             plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'o','Color','r','MarkerFaceColor','r');% auto-selected
@@ -7396,9 +8056,9 @@ fprintf('[READY !]\n');
                 Df_Ampl = {Ndata,1};
                 clc
                 for d = 1:Ndata
-                    if DTB{d,1}.status~=2
-                        if ~isempty(DTB{d,1}.hvsr180.spectralratio)
-                            if isnan(DTB{d,1}.hvsr.auto_main_peak_amplitude) && isnan(DTB{d,1}.hvsr.user_main_peak_amplitude)
+                    if DTB__status(d,1)~=2
+                        if ~isempty(DTB__hvsr180__spectralratio{d,1})
+                            if isnan(DTB__hvsr__auto_main_peak_amplitude(d,1)) && isnan(DTB__hvsr__user_main_peak_amplitude(d,1))
                                 continue;
                             end
                             %
@@ -7408,20 +8068,20 @@ fprintf('[READY !]\n');
                             surface_locations(d,1) = SURVEYS{d,1}(1);
                             surface_locations(d,2) = SURVEYS{d,1}(2);
                             %
-                            if ~isnan(DTB{d,1}.hvsr.user_main_peak_amplitude)
-                                PeakId = DTB{d,1}.hvsr.user_main_peak_id_in_section;
-                                surface_locations(d,3) = 1/DTB{d,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
-                                PeakFr = DTB{d,1}.hvsr.user_main_peak_frequence;% 20180719
+                            if ~isnan(DTB__hvsr__user_main_peak_amplitude(d,1))
+                                PeakId = DTB__hvsr__user_main_peak_id_in_section(d,1);
+                                surface_locations(d,3) = 1/DTB__hvsr__user_main_peak_frequence(d,1);% user selection is always preferred
+                                PeakFr = DTB__hvsr__user_main_peak_frequence(d,1);% 20180719
                             else
-                                PeakId = DTB{d,1}.hvsr.auto_main_peak_id_in_section;
-                                surface_locations(d,3) = 1/DTB{d,1}.hvsr.auto_main_peak_frequence;
-                                PeakFr = DTB{d,1}.hvsr.auto_main_peak_frequence;% 20180719
+                                PeakId = DTB__hvsr__auto_main_peak_id_in_section(d,1);
+                                surface_locations(d,3) = 1/DTB__hvsr__auto_main_peak_frequence(d,1);
+                                PeakFr = DTB__hvsr__auto_main_peak_frequence(d,1);% 20180719
                             end
-                            DirectionalPeakValues{d,1} = DTB{d,1}.hvsr180.spectralratio(PeakId, :);
+                            DirectionalPeakValues{d,1} = DTB__hvsr180__spectralratio{d,1}(PeakId, :);
                             [~,c] = find(DirectionalPeakValues{d}==max(DirectionalPeakValues{d}));
                             %c
                             MaindirectionId(d)=c(1);
-                            theta = DTB{d,1}.hvsr180.angle_step;
+                            theta = DTB__hvsr180__angle_step(d,1);
                             angles = 0:theta:(180-theta);
                             Grads(d) = angles(MaindirectionId(d));
                             pd = pd+1;
@@ -7430,21 +8090,17 @@ fprintf('[READY !]\n');
                             %
                             %% around main peak (to be sure that not much variability is present)
                             if ddf >0
-                                odf = DTB{d,1}.section.Frequency_Vector(3); 
-                                %ni = ceil(ddf/odf);                                     20180719
-                                %istr = (PeakId-ni); if istr<1; istr=1; end              20180719
-                                %istp = (PeakId+ni); if istp>PeakId; istp=PeakId; end    20180719
-                                                                  
+                                odf = DTB__section__Frequency_Vector{d,1}(3); 
                                 ni1 = ceil( (PeakFr*(1-ddf/100))/odf );%               20180719
                                 ni2 = fix(  (PeakFr*(1+ddf/100))/odf );%               20180719
                                 istr = ni1; if istr<1; istr=1; end
-                                istp = ni2; if istp>size(DTB{d,1}.hvsr180.preferred_direction,1); istp=PeakId; end
+                                istp = ni2; if istp>size(DTB__hvsr180__preferred_direction{d,1},1); istp=PeakId; end
                                 fprintf('   Range[%3.2f][%3.2f]',ni1*odf,ni2*odf);
 
                                 ids =  istr:istp;
-                                directs = DTB{d,1}.hvsr180.preferred_direction(ids,1);
+                                directs = DTB__hvsr180__preferred_direction{d,1}(ids,1);
                                 Df_Grads{d,1} = angles(directs);
-                                Df_Ampl{d,1}  = DTB{d,1}.hvsr180.preferred_direction(ids,2);
+                                Df_Ampl{d,1}  = DTB__hvsr180__preferred_direction{d,1}(ids,2);
                             end 
                             fprintf('\n')
                         else
@@ -7505,8 +8161,8 @@ fprintf('[READY !]\n');
                     %% measure points plot
                     for d = 1:length(active_station_ids)
                         hvid = active_station_ids(d);
-                        if ~isempty(DTB{hvid,1}.hvsr180.spectralratio)
-                            if ~isnan(DTB{hvid,1}.hvsr.user_main_peak_amplitude)
+                        if ~isempty(DTB__hvsr180__spectralratio{hvid,1})
+                            if ~isnan(DTB__hvsr__user_main_peak_amplitude(hvid,1))
                                 plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'o','Color','y','MarkerFaceColor','y');% user selected
                             else
                                 plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'o','Color','r','MarkerFaceColor','r');% auto-selected
@@ -7585,14 +8241,14 @@ fprintf('[READY !]\n');
                 end% dd>0
             end
             if mode==3
-                df = DTB{cid,1}.section.Frequency_Vector(3);
-                Fvec = df*(  (DTB{cid,1}.section.Frequency_Vector(1)-1) : (DTB{cid,1}.section.Frequency_Vector(2)-1) );
+                df = DTB__section__Frequency_Vector{cid,1}(3);
+                Fvec = df*(  (DTB__section__Frequency_Vector{cid,1}(1)-1) : (DTB__section__Frequency_Vector{cid,1}(2)-1) );
                 %
-                theta = DTB{cid,1}.hvsr180.angle_step;
+                theta = DTB__hvsr180__angle_step(cid,1);
                 angles = (0:theta:(180-theta))';
                 %
-                Grads = angles(DTB{cid,1}.hvsr180.preferred_direction(:,1));
-                Ampl= DTB{cid,1}.hvsr180.preferred_direction(:,2);
+                Grads = angles(DTB__hvsr180__preferred_direction{cid,1}(:,1));
+                Ampl= DTB__hvsr180__preferred_direction{cid,1}(:,2);
 
                     %arrowmaxlength = scalearrows*max([ ,  ]);
                 %   \  |y /(N)
@@ -7607,15 +8263,15 @@ fprintf('[READY !]\n');
                 %% embedded surface
                 dd = 0;
                 for d = 1:Ndata
-                    if DTB{d,1}.status~=2
+                    if DTB__status(d,1)~=2
                         dd = dd+1;
                         active_station_ids(d)=dd;
                         surface_locations(d,1) = SURVEYS{d,1}(1);
                         surface_locations(d,2) = SURVEYS{d,1}(2);
-                        if ~isnan(DTB{d,1}.hvsr.user_main_peak_amplitude)
-                            surface_locations(d,3) = 1/DTB{d,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
+                        if ~isnan(DTB__hvsr__user_main_peak_amplitude(d,1))
+                            surface_locations(d,3) = 1/DTB__hvsr__user_main_peak_frequence(d,1);% user selection is always preferred
                         else
-                            surface_locations(d,3) = 1/DTB{d,1}.hvsr.auto_main_peak_frequence;
+                            surface_locations(d,3) = 1/DTB__hvsr__auto_main_peak_frequence(d,1);
                         end
                     end
                 end
@@ -7625,12 +8281,10 @@ fprintf('[READY !]\n');
                     plot_interpolated_surface(h_ax, surface_locations);
                     grid 'off'
                     %% main peak
-                    if ~isnan(DTB{cid,1}.hvsr.user_main_peak_frequence)
-%                         F0 = DTB{cid,1}.hvsr.user_main_peak_frequence;
-                        PeakId = DTB{cid,1}.hvsr.user_main_peak_id_in_section;
+                    if ~isnan(DTB__hvsr__user_main_peak_frequence(cid,1))
+                        PeakId = DTB__hvsr__user_main_peak_id_in_section(cid,1);
                     else
-%                         F0 = DTB{cid,1}.hvsr.auto_main_peak_frequence;
-                        PeakId = DTB{cid,1}.hvsr.auto_main_peak_id_in_section;
+                        PeakId = DTB__hvsr__auto_main_peak_id_in_section(cid,1);
                     end
                      
                     %% Directions
@@ -7650,7 +8304,7 @@ fprintf('[READY !]\n');
                         end
                     end
                     %% main peak line
-                    if ~isnan(DTB{cid,1}.hvsr.user_main_peak_amplitude)
+                    if ~isnan(DTB__hvsr__user_main_peak_amplitude(cid,1))
                         plot3(h_ax, (xp+scalearrows*xproj(PeakId)*[-1,1]), (yp+scalearrows*yproj(PeakId)*[-1,1]), zp(PeakId)*[1,1],'diamond-g','LineWidth',2); 
                         plot3(h_ax, xp*[1,1], yp*[1,1], [min(zp),max(zp)],'k')
                     else
@@ -7661,8 +8315,8 @@ fprintf('[READY !]\n');
                     hold(h_ax,'on')
                     %% measure points plot
 %                     for d = 1:size(surface_locations,1)
-%                         if DTB{d,1}.status~=2
-%                             if ~isnan(DTB{d,1}.hvsr.user_main_peak_amplitude)
+%                         if DTB__status(d,1)~=2
+%                             if ~isnan(DTB__hvsr__user_main_peak_amplitude(d,1))
 %                                 plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'oy','MarkerFaceColor','y');% user selected
 %                             else
 %                                 plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'or','MarkerFaceColor','r');% auto-selected
@@ -7693,12 +8347,11 @@ fprintf('[READY !]\n');
             end
             view(3)
             drawnow
-
-            %%
-            is_done();
         end
+        is_done();
     end
-    function plot_interpolated_surface(h_ax, surface_locations)            
+    function plot_interpolated_surface(h_ax, surface_locations)  
+        %is_drawing();
             %% EXTRA POINTS IN INTERPOLATION ? h_bedrock_extra_points3d
             nx = P.TAB_view3d_Discretization(1);
             ny = P.TAB_view3d_Discretization(2);
@@ -7733,8 +8386,10 @@ fprintf('[READY !]\n');
                 sprintf('**** MESSAGE ****\nMatlab version < R2014B\n surface visualization not available.')
             end
             hold(h_ax,'on')
+            %is_done();
     end% plot_interpolated_surface
     function plots_3D_update()
+        %is_drawing();
         switch P.Flags.View_3D_current_mode%  Matlab: before 2014b
             case 1
                 %Graphics_3dView_plot3d(H.gui,  hAx_3DViews, P.Flags.View_3D_current_submode);
@@ -7744,10 +8399,11 @@ fprintf('[READY !]\n');
             case 3
                 Graphics_3dView_quiver(0, P.Flags.View_3D_current_submode);
         end
+        %is_done();
     end
 %%    Ibs-von Seht and Wolemberg
     function Graphics_IBSeW_plot_regression(newfigure)
-        if ~isempty(DTB)
+        if ~isempty(SURVEYS)
             if(newfigure)
                 h_fig = figure('name','no name specified');
                 h_ax= gca;%get(h_fig,'CurrentAxes');
@@ -7841,8 +8497,7 @@ fprintf('[READY !]\n');
         end
     end% Graphics_IBSeW_plot_regression
     function Graphics_IBSeW_plot_depths(newfigure)
-        if ~isempty(DTB)
-            is_busy();
+        if ~isempty(SURVEYS)
             if(newfigure)
                 h_fig = figure('name','no name specified');
                 h_ax= gca;%
@@ -7859,7 +8514,7 @@ fprintf('[READY !]\n');
             ny = P.TAB_IBSeW_Discretization(2);
             %
             %         
-            Nhv = size(DTB,1);
+            Nhv = size(DTB__status,1);
             Xvec         = zeros(Nhv,1);
             Yvec         = zeros(Nhv,1);
             Measurements = zeros(Nhv,1);
@@ -7871,23 +8526,23 @@ fprintf('[READY !]\n');
             bedrock_ids = zeros(Nhv,1);
             dd=0;
             for pp = 1:Nhv
-                if DTB{pp,1}.status ~= 2% all literature regressions
+                if DTB__status(pp,1) ~= 2% all literature regressions
                     dd=dd+1;
                     bedrock_ids(dd)=pp; 
                 end
                 xx    = SURVEYS{pp,1}(1);
                 yy    = SURVEYS{pp,1}(2);
-                zt    = SURVEYS{pp,1}(3);% FIX
+                zt    = SURVEYS{pp,1}(3);% DEVELOPMENT
                 Xvec(pp)    = xx;
                 Yvec(pp)    = yy;
                 Measurements(pp) = zt;
                 %
                 if ~isempty(P.regression_computed)
-                    Bedrock__computed(pp)    = zt-DTB{pp,1}.well.bedrock_depth__COMPUTED;
+                    Bedrock__computed(pp)    = zt-DTB__well__bedrock_depth__COMPUTED{pp,1};
                 end
-                Bedrock__Ibs1999(pp)     = zt-DTB{pp,1}.well.bedrock_depth__IBS1999;
-                Bedrock__Parolai2002(pp) = zt-DTB{pp,1}.well.bedrock_depth__PAROLAI2002;
-                Bedrock__Hinzen2004(pp)  = zt-DTB{pp,1}.well.bedrock_depth__HINZEN2004;
+                Bedrock__Ibs1999(pp)     = zt-DTB__well__bedrock_depth__IBS1999{pp,1};
+                Bedrock__Parolai2002(pp) = zt-DTB__well__bedrock_depth__PAROLAI2002{pp,1};
+                Bedrock__Hinzen2004(pp)  = zt-DTB__well__bedrock_depth__HINZEN2004{pp,1};
                 MaxDepths(pp) = max( [Bedrock__computed(pp),Bedrock__Ibs1999(pp),Bedrock__Parolai2002(pp),Bedrock__Hinzen2004(pp)] );
             end
             bedrock_ids = bedrock_ids(1:dd);
@@ -8047,7 +8702,7 @@ fprintf('[READY !]\n');
             
             %% PLOT stations
             for pp = 1:Nhv
-                if DTB{pp,1}.status ~= 2
+                if DTB__status(pp,1) ~= 2
                     plot3(h_ax,SURVEYS{pp,1}(1), SURVEYS{pp,1}(2), SURVEYS{pp,1}(3),'diamondg','MarkerFaceColor','g','linewidth',1); hold(h_ax, 'on')
                 else
                     plot3(h_ax,SURVEYS{pp,1}(1), SURVEYS{pp,1}(2), SURVEYS{pp,1}(3),'diamondk','MarkerFaceColor','k','linewidth',1); hold(h_ax, 'on')
@@ -8059,28 +8714,26 @@ fprintf('[READY !]\n');
             xlabel(h_ax,'X (E/W)','fontweight','bold')
             ylabel(h_ax,'Y (N/S)','fontweight','bold')
             zlabel(h_ax,'Depth (m)','fontweight','bold')
-            view(3);
-            is_done();
+            view(3);            
         end
     end% Graphics_IBSeW_plot_depths 
     function Update_wells_info()
-        %set(T6_PD_FileID,'string',num2str(P.isshown.id));% HVSR data
         Fstrid = num2str( P.isshown.id );
         starr = ['ID-',Fstrid,'   ~/',SURVEYS{P.isshown.id,2}];
         set(T6_PD_datafile_txt,'String',starr);
         %
-        if ~isempty(WELLS) || ~strcmp(DTB{P.isshown.id,1}.well.bedrock_depth_source,'n.a.')% there are wells enabled or manual depth
-            if strcmp('n.a',DTB{P.isshown.id,1}.well.bedrock_depth_source)
+        if ~isempty(WELLS) || ~strcmp(DTB__well__bedrock_depth_source{P.isshown.id,1},'n.a.')% there are wells enabled or manual depth
+            if strcmp('n.a',DTB__well__bedrock_depth_source{P.isshown.id,1})
                 %% no well present
                 set(T6_PD_wellfile_txt,'String','NO WELL SELECTED FOR THIS DATA');
                 set(T6_PA_BedrockDepth,'string','unknown')
                 set(T6_PA_BedrockDepthSource,'string','none')
             else
-                Wstrid = num2str( DTB{P.isshown.id,1}.well.well_id );
-                starr = ['ID-',Wstrid,'   ~/',DTB{P.isshown.id,1}.well.well_name];
+                Wstrid = num2str( DTB__well__well_id(P.isshown.id,1));
+                starr = ['ID-',Wstrid,'   ~/',DTB__well__well_name{P.isshown.id,1}];
                 set(T6_PD_wellfile_txt,'String',starr);
-                set(T6_PA_BedrockDepth,'string', num2str(DTB{P.isshown.id,1}.well.bedrock_depth__KNOWN))
-                set(T6_PA_BedrockDepthSource,'string',DTB{P.isshown.id,1}.well.bedrock_depth_source)
+                set(T6_PA_BedrockDepth,'string', num2str(DTB__well__bedrock_depth__KNOWN{P.isshown.id,1}))
+                set(T6_PA_BedrockDepthSource,'string',DTB__well__bedrock_depth_source{P.isshown.id,1})
             end
         else
             set(T6_PD_wellfile_txt,'String','NO WELLS DEFINED');
@@ -8214,13 +8867,23 @@ fprintf('[READY !]\n');
         end
     end
     function is_busy()
-        bgc = [1 0.5 0.1];
+        bgc = [1 0 0];
         set(ISBUSY1,'BackgroundColor', bgc, 'String', 'Working');
         set(ISBUSY2,'BackgroundColor', bgc, 'String', 'Working');
         set(ISBUSY3,'BackgroundColor', bgc, 'String', 'Working');
         set(ISBUSY4,'BackgroundColor', bgc, 'String', 'Working');
         set(ISBUSY5,'BackgroundColor', bgc, 'String', 'Working');
         set(ISBUSY6,'BackgroundColor', bgc, 'String', 'Working');
+        drawnow
+    end
+    function is_drawing()
+        bgc = [1 0.5 0.1];
+        set(ISBUSY1,'BackgroundColor', bgc, 'String', 'Drawing');
+        set(ISBUSY2,'BackgroundColor', bgc, 'String', 'Drawing');
+        set(ISBUSY3,'BackgroundColor', bgc, 'String', 'Drawing');
+        set(ISBUSY4,'BackgroundColor', bgc, 'String', 'Drawing');
+        set(ISBUSY5,'BackgroundColor', bgc, 'String', 'Drawing');
+        set(ISBUSY6,'BackgroundColor', bgc, 'String', 'Drawing');
         drawnow
     end
     function is_done()
@@ -8233,6 +8896,7 @@ fprintf('[READY !]\n');
         set(ISBUSY6,'BackgroundColor', bgc, 'String', 'Ready');
         drawnow
     end
+
 %% DATA ELABORATION
 %%    preliminars
     function check_for_data_uniformity()
@@ -8319,63 +8983,63 @@ fprintf('[READY !]\n');
 %    SINGLE DATA
     function compute_single_windowing(dat_id) % always using displayed parameters
         if dat_id==0; return; end
-        if DTB{dat_id,1}.status == 1% if status == 0 data will not be changed
+        if DTB__status(dat_id,1) == 1% if status == 0 data will not be changed
             % when new windowing is performed all elaboration info are
             % discarded
             %% discard previous elaboration if present
-            %%   DTB{}.section.
-            DTB{dat_id,1}.section.Min_Freq = 0.2;% filled runtime
-            DTB{dat_id,1}.section.Max_Freq = 100;% filled runtime
-            DTB{dat_id,1}.section.Frequency_Vector = [];% filled runtime
+            %%   DTB__section.
+            DTB__section__Min_Freq(dat_id,1) = 0.2;% filled runtime
+            DTB__section__Max_Freq(dat_id,1) = 100;% filled runtime
+            DTB__section__Frequency_Vector{dat_id,1} = [];% filled runtime
             %
-            DTB{dat_id,1}.section.V_windows = [];% filled runtime
-            DTB{dat_id,1}.section.E_windows = [];% filled runtime
-            DTB{dat_id,1}.section.N_windows = [];% filled runtime
+            DTB__section__V_windows{dat_id,1} = [];% filled runtime
+            DTB__section__E_windows{dat_id,1} = [];% filled runtime
+            DTB__section__N_windows{dat_id,1} = [];% filled runtime
             %
-            DTB{dat_id,1}.section.Average_V  = [];% filled runtime
-            DTB{dat_id,1}.section.Average_E = [];% filled runtime
-            DTB{dat_id,1}.section.Average_N = [];% filled runtime                    << compute_single_hv(dat_id)
+            DTB__section__Average_V{dat_id,1} = [];% filled runtime
+            DTB__section__Average_E{dat_id,1} = [];% filled runtime
+            DTB__section__Average_N{dat_id,1} = [];% filled runtime                    << compute_single_hv(dat_id)
             %
-            DTB{dat_id,1}.section.HV_windows = [];% filled runtime
-            DTB{dat_id,1}.section.EV_windows = [];% filled runtime
-            DTB{dat_id,1}.section.NV_windows = [];% filled runtime
-            %%   DTB{}.hvsr.
-            DTB{dat_id,1}.hvsr.curve_full = [];
+            DTB__section__HV_windows{dat_id,1} = [];% filled runtime
+            DTB__section__EV_windows{dat_id,1} = [];% filled runtime
+            DTB__section__NV_windows{dat_id,1} = [];% filled runtime
+            %%   DTB__hvsr.
+            DTB__hvsr__curve_full{dat_id,1} = [];
             %T_hvsr.error_full = [];
-            DTB{dat_id,1}.hvsr.confidence95_full = [];
-            DTB{dat_id,1}.hvsr.curve_EV_full = [];
-            DTB{dat_id,1}.hvsr.curve_NV_full = [];
+            DTB__hvsr__confidence95_full{dat_id,1} = [];
+            DTB__hvsr__curve_EV_full{dat_id,1} = [];
+            DTB__hvsr__curve_NV_full{dat_id,1} = [];
             %
-            DTB{dat_id,1}.hvsr.EV_all_windows = [];
-            DTB{dat_id,1}.hvsr.NV_all_windows = [];
-            DTB{dat_id,1}.hvsr.HV_all_windows = [];
+            DTB__hvsr__EV_all_windows{dat_id,1} = [];
+            DTB__hvsr__NV_all_windows{dat_id,1} = [];
+            DTB__hvsr__HV_all_windows{dat_id,1} = [];
             %
-            DTB{dat_id,1}.hvsr.curve = [];
+            DTB__hvsr__curve{dat_id,1} = [];
             %DTB{dat_id,1}.hvsr.error = [];
-            DTB{dat_id,1}.hvsr.confidence95 = [];
-            DTB{dat_id,1}.hvsr.standard_deviation = [];
-            DTB{dat_id,1}.hvsr.curve_EV = [];
-            DTB{dat_id,1}.hvsr.curve_NV = [];
+            DTB__hvsr__confidence95{dat_id,1} = [];
+            DTB__hvsr__standard_deviation{dat_id,1} = [];
+            DTB__hvsr__curve_EV{dat_id,1} = [];
+            DTB__hvsr__curve_NV{dat_id,1} = [];
             %
-            DTB{dat_id,1}.hvsr.peaks_idx = [];   %index of local maxima
-            DTB{dat_id,1}.hvsr.hollows_idx = [];   %index of local minima
+            DTB__hvsr__peaks_idx{dat_id,1} = [];   %index of local maxima
+            DTB__hvsr__hollows_idx{dat_id,1} = [];   %index of local minima
             %DTB{dat_id,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
             % hvsr peaks (authomatic/user)
-            DTB{dat_id,1}.hvsr.user_main_peak_frequence = NaN;
-            DTB{dat_id,1}.hvsr.user_main_peak_amplitude = NaN;
-            DTB{dat_id,1}.hvsr.user_main_peak_id_full_curve = NaN;
-            DTB{dat_id,1}.hvsr.user_main_peak_id_in_section = NaN;
+            DTB__hvsr__user_main_peak_frequence(dat_id,1) = NaN;
+            DTB__hvsr__user_main_peak_amplitude(dat_id,1) = NaN;
+            DTB__hvsr__user_main_peak_id_full_curve(dat_id,1) = NaN;
+            DTB__hvsr__user_main_peak_id_in_section(dat_id,1) = NaN;
 
-            DTB{dat_id,1}.hvsr.auto_main_peak_frequence = NaN;
-            DTB{dat_id,1}.hvsr.auto_main_peak_amplitude = NaN;
-            DTB{dat_id,1}.hvsr.auto_main_peak_id_full_curve= NaN;
-            DTB{dat_id,1}.hvsr.auto_main_peak_id_in_section = NaN;
-            %%   DTB{}.hvsr180.
-            DTB{dat_id,1}.hvsr180.angle_id = 1;% 1 = option-1 in uicontrol: off
-            DTB{dat_id,1}.hvsr180.angles = [];
-            DTB{dat_id,1}.hvsr180.angle_step = 0;
-            DTB{dat_id,1}.hvsr180.spectralratio = [];
-            DTB{dat_id,1}.hvsr180.preferred_direction = [];
+            DTB__hvsr__auto_main_peak_frequence(dat_id,1) = NaN;
+            DTB__hvsr__auto_main_peak_amplitude(dat_id,1) = NaN;
+            DTB__hvsr__auto_main_peak_id_full_curve(dat_id,1)= NaN;
+            DTB__hvsr__auto_main_peak_id_in_section(dat_id,1) = NaN;
+            %%   DTB__hvsr180.
+            DTB__hvsr180__angle_id(dat_id,1) = 1;% 1 = option-1 in uicontrol: off
+            DTB__hvsr180__angles{dat_id,1} = [];
+            DTB__hvsr180__angle_step(dat_id,1) = 0;
+            DTB__hvsr180__spectralratio{dat_id,1} = [];
+            DTB__hvsr180__preferred_direction{dat_id,1} = [];
             %
             %
             %% Make new fenestration
@@ -8383,24 +9047,24 @@ fprintf('[READY !]\n');
             fs = sampling_frequences(dat_id);
             %% prepare filtered version of data and decide use   
             idfilter = get(T2_PA_filter,'Value');% [1]off, [2]bandpass
-            DTB{dat_id,1}.elab_parameters.filter_id = idfilter;
+            DTB__elab_parameters__filter_id(dat_id,1) = idfilter;
             %% decide which data to use 
             switch get(T2_PA_dattoUSE,'Value')% [1]STA/LTA [2]spectral ratios
                 case 2% use filtered data in H/V
-                    DTB{dat_id,1}.elab_parameters.data_to_use = 2;% filtered
+                    DTB__elab_parameters__data_to_use(dat_id,1) = 2;% filtered
                 otherwise
                     %[1] no filter in use OR use filtered data only STA/LTA windows selection
-                    DTB{dat_id,1}.elab_parameters.data_to_use = 1;% original
+                    DTB__elab_parameters__data_to_use(dat_id,1) = 1;% original
             end
             %
             Hdd = [];
             switch idfilter
                 case 1% OFF
-                    DTB{dat_id,1}.elab_parameters.filter_name  = 'none';
-                    DTB{dat_id,1}.elab_parameters.filter_order = NaN;%
-                    DTB{dat_id,1}.elab_parameters.filterFc1    = NaN;
-                    DTB{dat_id,1}.elab_parameters.filterFc2    = NaN;
-                    DTB{dat_id,1}.elab_parameters.use_of_filtered_data = NaN;
+                    DTB__elab_parameters__filter_name{dat_id,1}  = 'none';
+                    DTB__elab_parameters__filter_order(dat_id,1) = NaN;%
+                    DTB__elab_parameters__filterFc1(dat_id,1)    = NaN;
+                    DTB__elab_parameters__filterFc2(dat_id,1)    = NaN;
+                    % DTB{dat_id,1}.elab_parameters.use_of_filtered_data = NaN;%  DELETE?
                     for cc = 1:3
                         FDAT{dat_id, cc} = [];% Filtered data
                     end
@@ -8414,10 +9078,10 @@ fprintf('[READY !]\n');
                     Fc1   = str2double(get(T2_PA_filter_fmin,'String'));
                     Fc2   = str2double(get(T2_PA_filter_fmax,'String'));
                     %
-                    DTB{dat_id,1}.elab_parameters.filter_name = 'Bandpass Butterworth IIR: spec=[N,Fc1,Fc2]';
-                    DTB{dat_id,1}.elab_parameters.filter_order = NOrdr;%
-                    DTB{dat_id,1}.elab_parameters.filterFc1 = Fc1;
-                    DTB{dat_id,1}.elab_parameters.filterFc2 = Fc2;
+                    DTB__elab_parameters__filter_name{dat_id,1} = 'Bandpass Butterworth IIR: spec=[N,Fc1,Fc2]';
+                    DTB__elab_parameters__filter_order(dat_id,1) = NOrdr;%
+                    DTB__elab_parameters__filterFc1(dat_id,1) = Fc1;
+                    DTB__elab_parameters__filterFc2(dat_id,1) = Fc2;
                     dd = fdesign.bandpass('N,Fc1,Fc2',NOrdr, Fc1,Fc2, fs);
                     %designmethods(dd,'SystemObject',true)
                     Hdd = design(dd,'butter');
@@ -8432,10 +9096,10 @@ fprintf('[READY !]\n');
                     NOrdr = default_values.Lowpss_Order;
                     Fc2   = str2double(get(T2_PA_filter_fmax,'String'));
                     
-                    DTB{dat_id,1}.elab_parameters.filter_name = 'Lowpass Butterworth IIR: spec=[N,Fc]';
-                    DTB{dat_id,1}.elab_parameters.filter_order = NOrdr;%
-                    DTB{dat_id,1}.elab_parameters.filterFc1 = NaN;
-                    DTB{dat_id,1}.elab_parameters.filterFc2 = Fc2; 
+                    DTB__elab_parameters__filter_name{dat_id,1} = 'Lowpass Butterworth IIR: spec=[N,Fc]';
+                    DTB__elab_parameters__filter_order(dat_id,1) = NOrdr;%
+                    DTB__elab_parameters__filterFc1(dat_id,1) = NaN;
+                    DTB__elab_parameters__filterFc2(dat_id,1) = Fc2; 
                     dd = fdesign.lowpass('N,Fc',NOrdr,Fc2,fs);
                     %designmethods(dd,'SystemObject',true)
                     Hdd = design(dd,'butter');
@@ -8450,10 +9114,10 @@ fprintf('[READY !]\n');
                     NOrdr = default_values.Highpss_Order;
                     Fc2   = str2double(get(T2_PA_filter_fmax,'String'));
                     
-                    DTB{dat_id,1}.elab_parameters.filter_name = 'Highpass Butterworth IIR: spec=[N,F3dB]';
-                    DTB{dat_id,1}.elab_parameters.filter_order = NOrdr;%
-                    DTB{dat_id,1}.elab_parameters.filterFc1 = NaN;
-                    DTB{dat_id,1}.elab_parameters.filterFc2 = Fc2; 
+                    DTB__elab_parameters__filter_name{dat_id,1} = 'Highpass Butterworth IIR: spec=[N,F3dB]';
+                    DTB__elab_parameters__filter_order(dat_id,1) = NOrdr;%
+                    DTB__elab_parameters__filterFc1(dat_id,1) = NaN;
+                    DTB__elab_parameters__filterFc2(dat_id,1) = Fc2; 
                     dd = fdesign.highpass('N,F3dB',NOrdr,Fc2,fs);
                     %designmethods(dd,'SystemObject',true)
                     Hdd = design(dd,'butter');
@@ -8465,7 +9129,7 @@ fprintf('[READY !]\n');
                     set(T2_PA_dattoshow,'Enable','on')
                     set(T2_PA_dattoshow,'Value',2)            
             end
-            DTB{dat_id,1}.elab_parameters.THEfilter = Hdd;
+            DTB__elab_parameters__THEfilter{dat_id,1} = Hdd;% save filter for book-keeping
             %
             % Compute windows
             window_width = str2double(get(T3_P1_winsize,'String'));
@@ -8552,30 +9216,30 @@ fprintf('[READY !]\n');
                 end
             end
             %            
-            DTB{dat_id,1}.wndows.width_sec = window_width; 
-            DTB{dat_id,1}.wndows.number = Nwindows;
-            DTB{dat_id,1}.wndows.indexes = winids;
-            DTB{dat_id,1}.wndows.is_ok = winok;
-            DTB{dat_id,1}.wndows.info = [ns, ns_window, ns_overlap, 0, 0, 0];
+            DTB__windows__width_sec(dat_id,1) = window_width; 
+            DTB__windows__number(dat_id,1) = Nwindows;
+            DTB__windows__indexes{dat_id,1} = winids;
+            DTB__windows__is_ok{dat_id,1} = winok;
+            DTB__windows__info(dat_id,1:6) = [ns, ns_window, ns_overlap, 0, 0, 0];
             
-            DTB{dat_id,1}.elab_parameters.windows_width = window_width;
-            DTB{dat_id,1}.elab_parameters.windows_overlap = window_overlap_pc;
-            DTB{dat_id,1}.elab_parameters.windows_sta_vs_lta = sta_lta_ratio;
+            DTB__elab_parameters__windows_width(dat_id,1) = window_width;
+            DTB__elab_parameters__windows_overlap(dat_id,1) = window_overlap_pc;
+            DTB__elab_parameters__windows_sta_vs_lta(dat_id,1) = sta_lta_ratio;
             
             %>> warning('TO DO: update display info on main: here')
             if strcmp(P.ExtraFeatures.debug_mode,'on')
                 fprintf('compute_single_windowing(%d)\n',dat_id)
                 fprintf('....sets:\n')
-                fprintf('........DTB{%d,1}.wndows.number\n',dat_id)
-                fprintf('........DTB{%d,1}.wndows.indexes\n',dat_id)
-                fprintf('........DTB{%d,1}.wndows.is_ok \n',dat_id)
-                fprintf('........DTB{%d,1}.wndows.info = [ns, ns_window, ns_overlap, 0, 0, 0]\n',dat_id)
-                fprintf('........DTB{%d,1}.elab_parameters.windows_width \n',dat_id)
-                fprintf('........DTB{%d,1}.elab_parameters.windows_overlap\n',dat_id)
-                fprintf('........DTB{%d,1}.elab_parameters.windows_sta_vs_lta\n',dat_id)
+                fprintf('........DTB__windows__number(%d,1)\n',dat_id)
+                fprintf('........DTB__windows__indexes{%d,1}\n',dat_id)
+                fprintf('........DTB__windows__is_ok{%d,1}\n',dat_id)
+                fprintf('........DTB__windows__info(%d,:) = [ns, ns_window, ns_overlap, 0, 0, 0]\n',dat_id)
+                fprintf('........DTB__elab_parameters__windows_width(%d,1)\n',dat_id)
+                fprintf('........DTB__elab_parameters__windows_overlap(%d,1)\n',dat_id)
+                fprintf('........DTB__elab_parameters__windows_sta_vs_lta(%d,1)\n',dat_id)
             end
             %% Set progress flag
-            DTB{dat_id,1}.alaboration_progress = 1;% windowing only performed
+            DTB__elaboration_progress(dat_id,1) = 1;% windowing only performed
             %
             pad0 = 2^nextpow2(ns_window);
             set(T2_PD_win_samplespow2, 'String',num2str(pad0))
@@ -8591,7 +9255,7 @@ fprintf('[READY !]\n');
         % status = 0:   unsuccessful
         clc
         status = 1;
-        if DTB{dat_id,1}.status ~= 1
+        if DTB__status(dat_id,1) ~= 1
             message = strcat('File [',num2str(dat_id),'] is either "Locked" or "Excluded" (See Tab-1 "Main")'); 
             msgbox(message,'MESSAGE');
             status = 0;
@@ -8605,14 +9269,14 @@ fprintf('[READY !]\n');
         end
         
         Ndata = size(SURVEYS,1);
-        nok = sum(DTB{dat_id,1}.wndows.is_ok); 
+        nok = sum(DTB__windows__is_ok{dat_id,1}); 
         if nok<5
             message = strcat('File [',num2str(dat_id),'] Not enough windows (less than 5): This data will be EXCLUDED'); 
             msgbox(message,'Warning');
-            DTB{dat_id,1}.status = 2;
+            DTB__status(dat_id,1) = 2;
             status = 0;
         end
-        if DTB{dat_id,1}.status == 1 && nok>=5
+        if DTB__status(dat_id,1) == 1 && nok>=5
             %fprintf('>>> database_single_computation(data[%d])\n',dat_id)
             if perform_fft || perform_hvsr || perform_hvsr180
                 fprintf('COMPUTING DATABASE for [%d] of [%d] %s\n',dat_id,Ndata,SURVEYS{dat_id,2})
@@ -8638,7 +9302,7 @@ fprintf('[READY !]\n');
                 fprintf('\n')
                 %%
                 %% update status
-                P.isshown.accepted_windows = DTB{P.isshown.id,1}.wndows.is_ok;
+                P.isshown.accepted_windows = DTB__windows__is_ok{P.isshown.id,1};
             else
                 fprintf('NOTHING to do for [%d] of [%d] %s\n',dat_id,Ndata,SURVEYS{dat_id,2})
                 fprintf('\n')
@@ -8651,7 +9315,7 @@ fprintf('[READY !]\n');
         perform_hvsr = 0;
         perform_hvsr180 = 0;
         skip_this = 0;
-        if DTB{dat_id,1}.alaboration_progress == 0 % windowing was not performed
+        if DTB__elaboration_progress(dat_id,1) == 0 % windowing was not performed
             skip_this = 1;
             return;
         end
@@ -8666,9 +9330,9 @@ fprintf('[READY !]\n');
         ref_fmin = str2double( get(hT3_PA_edit_fmin,'string'));
         ref_fmax = str2double( get(hT3_PA_edit_fmax,'string'));
         %
-        ref_df=DTB{dat_id}.wndows.info(4);
+        ref_df=DTB__windows__info(dat_id,4);
         if ref_df >0
-            ref_nf=DTB{dat_id}.wndows.info(5);
+            ref_nf=DTB__windows__info(dat_id,5);
             ref_ifmin = fix(ref_fmin/ref_df);
             if ref_ifmin==0; ref_ifmin=1; end
             ref_ifmax = fix(ref_fmax/ref_df);
@@ -8683,51 +9347,49 @@ fprintf('[READY !]\n');
         angle_id = get(T3_P1_angular_samp,'Value');
         if angle_id==1% is off, clean up
             perform_hvsr180 = 0;
-            DTB{P.isshown.id,1}.hvsr180.angle_id = angle_id;
-            DTB{dat_id,1}.hvsr180.angles = [];
-            DTB{dat_id,1}.hvsr180.angle_step = 0;
-            DTB{dat_id,1}.hvsr180.spectralratio = [];
-            DTB{dat_id,1}.hvsr180.preferred_direction = [];
+            DTB__hvsr180__angle_id(P.isshown.id,1) = angle_id;
+            DTB__hvsr180__angles{dat_id,1} = [];
+            DTB__hvsr180__angle_step(dat_id,1) = 0;
+            DTB__hvsr180__spectralratio{dat_id,1} = [];
+            DTB__hvsr180__preferred_direction{dat_id,1} = [];
         end
         %
         %% check FFT
-        if( DTB{dat_id}.wndows.info(4) == 0 )% never computed before
+        if( DTB__windows__info(dat_id,4) == 0 )% never computed before
             perform_fft = 1;
-            %fprintf('check 2-02/7: DTB{dat_id}.wndows.info(4) == 0  (df)\n')
         end
-        if( DTB{dat_id}.wndows.info(5) == 0 )% never computed before
+        if( DTB__windows__info(dat_id,5) == 0 )% never computed before
             perform_fft = 1;
-            %fprintf('check 2-03/7: DTB{dat_id}.wndows.info(5) == 0  (size fft)\n')
         end
-        if( isempty(DTB{dat_id}.wndows.fftv) )% never computed before
+        if( isempty(DTB__windows__fftv{dat_id}) )% never computed before
             perform_fft = 1;
             %fprintf('check 2-04/7: fft is empty\n')
         end
-        if( isempty(DTB{dat_id}.wndows.ffte) )% never computed before
+        if( isempty(DTB__windows__ffte{dat_id}) )% never computed before
             perform_fft = 1;
             %fprintf('check 2-05/7: fft is empty\n')
         end
-        if( isempty(DTB{dat_id}.wndows.fftn) )% never computed before
+        if( isempty(DTB__windows__fftn{dat_id}) )% never computed before
             perform_fft = 1;
             %fprintf('check 2-06/7: fft is empty\n')
         end
         %
         % tapering
-        if(ref_window_tapering ~= DTB{dat_id,1}.elab_parameters.windows_tapering )% was changed
+        if(ref_window_tapering ~= DTB__elab_parameters__windows_tapering(dat_id,1) )% was changed
             perform_fft = 1;
             %fprintf('check 2-07/7: tapering has changed\n')
         end
         % padding
-        if isempty(DTB{dat_id,1}.wndows.info)
+        if isempty(DTB__windows__info)
             perform_fft = 1;
         end
-        if DTB{dat_id,1}.wndows.info(6) == 0% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
+        if DTB__windows__info(dat_id,6) == 0% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
             perform_fft = 1;
         end
         %
         pad_to = get(T3_P1_wpadto     ,'string');
-        pad_length_now = DTB{dat_id,1}.wndows.info(6);
-        pad0 = 2^nextpow2(DTB{dat_id,1}.wndows.info(2));
+        pad_length_now = DTB__windows__info(dat_id,6);
+        pad0 = 2^nextpow2(DTB__windows__info(dat_id,2));
         if ~strcmp(pad_to,'off')
             pad_length_in  = str2double(pad_to);
             %
@@ -8753,50 +9415,50 @@ fprintf('[READY !]\n');
         %
         %% check HVSR
         strategy_id = get(T2_PA_HV,'Value');
-        if( strategy_id ~= DTB{P.isshown.id,1}.elab_parameters.hvsr_strategy)
+        if( strategy_id ~= DTB__elab_parameters__hvsr_strategy(P.isshown.id,1))
             perform_hvsr = 1;
             %fprintf('check ????: Spectral ratio strategy changed \n')
         end
-        if( size(P.isshown.accepted_windows,1) ~= size(DTB{P.isshown.id,1}.wndows.is_ok,1))
+        if( size(P.isshown.accepted_windows,1) ~= size(DTB__windows__is_ok{P.isshown.id,1},1))
             perform_hvsr = 1;
             %fprintf('check 3-01/9 A: fft: windowing changed \n')
         end
-        if( size(P.isshown.accepted_windows,1) == size(DTB{P.isshown.id,1}.wndows.is_ok,1))% Acceptable windows changed.
-            if( sum( P.isshown.accepted_windows-DTB{P.isshown.id,1}.wndows.is_ok) ~= 0 )
+        if( size(P.isshown.accepted_windows,1) == size(DTB__windows__is_ok{P.isshown.id,1},1))% Acceptable windows changed.
+            if( sum( P.isshown.accepted_windows-DTB__windows__is_ok{P.isshown.id,1}) ~= 0 )
                 % N of windows changed: requires only HVSR computation 
                 perform_hvsr = 1;
                 %fprintf('check 3-01/9 B: fft: windowing changed \n')
             end
         end
-        if isempty(DTB{dat_id,1}.section.Frequency_Vector)% never computed before
+        if isempty(DTB__section__Frequency_Vector{dat_id,1})% never computed before
             %fprintf('check 3-02/9: Fvec  absent\n')
             perform_hvsr = 1;
         end
-        if DTB{dat_id,1}.section.Min_Freq ~= ref_fmin% was changed
+        if DTB__section__Min_Freq(dat_id,1) ~= ref_fmin% was changed
             %fprintf('check 3-03/9: Fmin changed\n')
             perform_hvsr = 1;
         end
-        if DTB{dat_id,1}.section.Max_Freq ~= ref_fmax% was changed
+        if DTB__section__Max_Freq(dat_id,1) ~= ref_fmax% was changed
             %fprintf('check 3-05/9: Fmax changed\n')
             perform_hvsr = 1;
         end
-        if ~isempty(DTB{dat_id,1}.section.Frequency_Vector)
-            if DTB{dat_id,1}.section.Frequency_Vector(1) ~= ref_ifmin% was changed
+        if ~isempty(DTB__section__Frequency_Vector{dat_id,1})
+            if DTB__section__Frequency_Vector{dat_id,1}(1) ~= ref_ifmin% was changed
                 %fprintf('check 3-04/9: i-Fmin changed\n')
                 perform_hvsr = 1;
             end
-            if DTB{dat_id,1}.section.Frequency_Vector(2) ~= ref_ifmax% was changed
+            if DTB__section__Frequency_Vector{dat_id,1}(2) ~= ref_ifmax% was changed
                 % fprintf('check 3-06/9: i-Fmax changed\n')
                 perform_hvsr = 1;
             end
         else
             perform_hvsr = 1;
         end
-        if(ref_smoothing_strategy ~= DTB{dat_id,1}.elab_parameters.smoothing_strategy )% was changed
+        if(ref_smoothing_strategy ~= DTB__elab_parameters__smoothing_strategy(dat_id,1) )% was changed
             % fprintf('check 3-07/9: smoothing strategy changed\n')
             perform_hvsr = 1;
         end
-        if(ref_smoothing_Slider ~= DTB{dat_id,1}.elab_parameters.smoothing_slider_val)% was changed
+        if(ref_smoothing_Slider ~= DTB__elab_parameters__smoothing_slider_val(dat_id,1))% was changed
             % fprintf('check 3-08/9: smoothing slider changed\n')
             perform_hvsr = 1;
         end
@@ -8809,20 +9471,20 @@ fprintf('[READY !]\n');
         end
         %
         %% check HVSR 180
-        if angle_id>1 && angle_id ~= DTB{dat_id,1}.hvsr180.angle_id
+        if angle_id>1 && angle_id ~= DTB__hvsr180__angle_id(dat_id,1)
             % fprintf('check 4-02/2: angular sampling changed\n')
             perform_hvsr180 =1;
         end
     end% function
     function compute_single_fft(dat_id)
-        if DTB{dat_id,1}.status == 1% if status == 0 data will not be changed
+        if DTB__status(dat_id,1) == 1% if status == 0 data will not be changed
             % ffts are defined on the full frequence scale 
             tapervalue = str2double(get(T3_P1_wintapering,'string'));
             
             %
-            n_of_windows = DTB{dat_id,1}.wndows.number;
-            DTB{dat_id,1}.wndows.number_fft = n_of_windows;
-            ns_window = DTB{dat_id}.wndows.info(2);
+            n_of_windows = DTB__windows__number(dat_id,1);
+            DTB__windows__number_fft(dat_id,1) = n_of_windows;
+            ns_window = DTB__windows__info(dat_id,2);
             fs = sampling_frequences(dat_id);%         sampling frequence
             %
             % padding
@@ -8836,11 +9498,11 @@ fprintf('[READY !]\n');
                     npad = pad0;
                 end
             end
-            DTB{dat_id,1}.wndows.info(6) = npad;% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
+            DTB__windows__info(dat_id,6) = npad;% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
             %
             df = 0;
-            WIDX = DTB{dat_id,1}.wndows.indexes;
-            switch DTB{dat_id,1}.elab_parameters.data_to_use
+            WIDX = DTB__windows__indexes{dat_id,1};
+            switch DTB__elab_parameters__data_to_use(dat_id,1)
                 case 2% filtered data
                     VEN = [FDAT{dat_id, 1},FDAT{dat_id, 2},FDAT{dat_id, 3}];
                 otherwise% original data
@@ -8858,29 +9520,29 @@ fprintf('[READY !]\n');
                 %% tapering
                 cosine_taper(wdat, tapervalue );    
                 %% STORE Windows (only used for HV-180, stored only if necessary)
-                if cc==1; DTB{dat_id,1}.wndows.winv = wdat; end
-                if cc==2; DTB{dat_id,1}.wndows.wine = wdat; end
-                if cc==3; DTB{dat_id,1}.wndows.winn = wdat; end
+                if cc==1; DTB__windows__winv{dat_id,1} = wdat; end
+                if cc==2; DTB__windows__wine{dat_id,1} = wdat; end
+                if cc==3; DTB__windows__winn{dat_id,1} = wdat; end
                 %% FFT
                 
                 [FT, df] = samfft(wdat, fs, npad);
-                if cc==1; DTB{dat_id,1}.wndows.fftv = 2*abs(FT); end
-                if cc==2; DTB{dat_id,1}.wndows.ffte = 2*abs(FT); end
-                if cc==3; DTB{dat_id,1}.wndows.fftn = 2*abs(FT); end
+                if cc==1; DTB__windows__fftv{dat_id,1} = 2*abs(FT); end
+                if cc==2; DTB__windows__ffte{dat_id,1} = 2*abs(FT); end
+                if cc==3; DTB__windows__fftn{dat_id,1} = 2*abs(FT); end
             end% cc
 
-            DTB{dat_id}.wndows.info(4) = df;
-            DTB{dat_id}.wndows.info(5) = size(FT,1);
-            DTB{dat_id,1}.elab_parameters.windows_tapering = tapervalue;
+            DTB__windows__info(dat_id,4) = df;
+            DTB__windows__info(dat_id,5) = size(FT,1);
+            DTB__elab_parameters__windows_tapering(dat_id,1) = tapervalue;
             if strcmp(P.ExtraFeatures.debug_mode,'on')
                 fprintf('....sets:\n')
-                fprintf('........DTB{%d,1}.wndows.number_fft\n',dat_id)
-                fprintf('........DTB{%d,1}.wndows.fftv\n',dat_id)
-                fprintf('........DTB{%d,1}.wndows.ffte\n',dat_id)
-                fprintf('........DTB{%d,1}.wndows.fftn\n',dat_id)
+                fprintf('........DTB__windows__number_fft(%d,1)\n',dat_id)
+                fprintf('........DTB__windows__fftv{%d,1}\n',dat_id)
+                fprintf('........DTB__windows__ffte{%d,1}\n',dat_id)
+                fprintf('........DTB__windows__fftn{%d,1}\n',dat_id)
                 %
-                fprintf('........DTB{%d,1}.wndows.info(4) = df\n',dat_id)
-                fprintf('........DTB{%d,1}.wndows.info(5) = size(FT,1);\n',dat_id)
+                fprintf('........DTB__windows__info(%d,4) = df\n',dat_id)
+                fprintf('........DTB__windows__info(%d,5) = size(FT,1);\n',dat_id)
             end
             %
         else
@@ -8888,12 +9550,12 @@ fprintf('[READY !]\n');
         end
     end
     function compute_single_hv(dat_id)
-        if DTB{dat_id,1}.status == 1% if status == 0 data will not be changed
+        if DTB__status(dat_id,1) == 1% if status == 0 data will not be changed
             fmin = str2double( get(hT3_PA_edit_fmin,'string'));
             fmax = str2double( get(hT3_PA_edit_fmax,'string'));
 
-            nf = DTB{dat_id}.wndows.info(5);%= [ns, ns_window, ns_overlap, 0, 0, ns_pad];
-            df = DTB{dat_id}.wndows.info(4);
+            nf = DTB__windows__info(dat_id,5);%= [ns, ns_window, ns_overlap, 0, 0, ns_pad];
+            df = DTB__windows__info(dat_id,4);
             ifmin = fix(fmin/df);
             if ifmin==0; ifmin=1; end
             ifmax = fix(fmax/df);
@@ -8904,18 +9566,18 @@ fprintf('[READY !]\n');
             specratio_strategy = get(T2_PA_HV,'Value');
             %
             %% section of data (not necessary after 17-11-08)
-            V = DTB{dat_id,1}.wndows.fftv(ifmin:ifmax,:);
-            E = DTB{dat_id,1}.wndows.ffte(ifmin:ifmax,:);
-            N = DTB{dat_id,1}.wndows.fftn(ifmin:ifmax,:);
+            V = DTB__windows__fftv{dat_id,1}(ifmin:ifmax,:);
+            E = DTB__windows__ffte{dat_id,1}(ifmin:ifmax,:);
+            N = DTB__windows__fftn{dat_id,1}(ifmin:ifmax,:);
             %
             %% update DTB -I
-            DTB{dat_id,1}.section.Min_Freq = fmin;
-            DTB{dat_id,1}.section.Max_Freq = fmax;
+            DTB__section__Min_Freq(dat_id,1) = fmin;
+            DTB__section__Max_Freq(dat_id,1) = fmax;
             %
             %
             Fvect = df*((ifmin:ifmax)-1);
             %>> warning('SAM: check if fmax is the full frequency vector maximum')
-            DTB{dat_id,1}.section.Frequency_Vector = [ifmin, ifmax, df];
+            DTB__section__Frequency_Vector{dat_id,1} = [ifmin, ifmax, df];
 
             %% H/V of Windows (OPTION-A, smooth final curves. [Is the less efficient approach] )
             %         fprintf('OPTION-A\n')
@@ -8950,88 +9612,88 @@ fprintf('[READY !]\n');
             HV = Have./V;
             %
             %
-            DTB{dat_id,1}.hvsr.EV_all_windows = EV;
-            DTB{dat_id,1}.hvsr.NV_all_windows = NV;
-            DTB{dat_id,1}.hvsr.HV_all_windows = HV;
+            DTB__hvsr__EV_all_windows{dat_id,1} = EV;
+            DTB__hvsr__NV_all_windows{dat_id,1} = NV;
+            DTB__hvsr__HV_all_windows{dat_id,1} = HV;
             %
             %% update DTB-II
-            DTB{dat_id,1}.section.V_windows = V;
-            DTB{dat_id,1}.section.E_windows = E;
-            DTB{dat_id,1}.section.N_windows = N;
+            DTB__section__V_windows{dat_id,1} = V;
+            DTB__section__E_windows{dat_id,1} = E;
+            DTB__section__N_windows{dat_id,1} = N;
 
-            DTB{dat_id,1}.section.HV_windows = HV;
-            DTB{dat_id,1}.section.EV_windows = EV;
-            DTB{dat_id,1}.section.NV_windows = NV;
+            DTB__section__HV_windows{dat_id,1} = HV;
+            DTB__section__EV_windows{dat_id,1} = EV;
+            DTB__section__NV_windows{dat_id,1} = NV;
             %
-            DTB{dat_id,1}.elab_parameters.smoothing_strategy = Smoothing_strategy;
-            DTB{dat_id,1}.elab_parameters.smoothing_slider_val = Smoothing_Slider;
-            DTB{dat_id,1}.elab_parameters.hvsr_strategy = specratio_strategy;
+            DTB__elab_parameters__smoothing_strategy(dat_id,1) = Smoothing_strategy;
+            DTB__elab_parameters__smoothing_slider_val(dat_id,1) = Smoothing_Slider;
+            DTB__elab_parameters__hvsr_strategy(dat_id,1) = specratio_strategy;
             if strcmp(P.ExtraFeatures.debug_mode,'on')
                 fprintf('....sets:\n')
-                fprintf('........DTB{%d,1}.section.Min_Freq = fmin\n',dat_id)
-                fprintf('........DTB{%d,1}.section.Max_Freq = fmax\n',dat_id)
+                fprintf('........DTB__section__Min_Freq(%d,1) = fmin\n',dat_id)
+                fprintf('........DTB__section__Max_Freq(%d,1) = fmax\n',dat_id)
                 %
-                fprintf('........DTB{%d,1}.section.Frequency_Vector = [ifmin, ifmax, df];\n',dat_id)
-                fprintf('........DTB{%d,1}.section.V_windows = V;\n',dat_id)
-                fprintf('........DTB{%d,1}.section.E_windows = E;\n',dat_id)
-                fprintf('........DTB{%d,1}.section.N_windows = N;\n',dat_id)
+                fprintf('........DTB__section__Frequency_Vector{%d,1} = [ifmin, ifmax, df];\n',dat_id)
+                fprintf('........DTB__section__V_windows{%d,1} = V;\n',dat_id)
+                fprintf('........DTB__section__E_windows{%d,1} = E;\n',dat_id)
+                fprintf('........DTB__section__N_windows{%d,1} = N;\n',dat_id)
 
-                fprintf('........DTB{%d,1}.section.HV_windows = HV;\n',dat_id)
-                fprintf('........DTB{%d,1}.section.EV_windows = EV;\n',dat_id)
-                fprintf('........DTB{%d,1}.section.NV_windows = NV;\n',dat_id)
+                fprintf('........DTB__section__HV_windows{%d,1} = HV;\n',dat_id)
+                fprintf('........DTB__section__EV_windows{%d,1} = EV;\n',dat_id)
+                fprintf('........DTB__section__NV_windows{%d,1} = NV;\n',dat_id)
                 %
-                fprintf('........DTB{%d,1}.elab_parameters.smoothing_strategy = Smoothing_strategy;\n',dat_id)
-                fprintf('........DTB{%d,1}.elab_parameters.smoothing_slider_val = Smoothing_Slider;\n',dat_id)
-                fprintf('........DTB{%d,1}.elab_parameters.hvsr_strategy = specratio_strategy;\n',dat_id)
+                fprintf('........DTB__elab_parameters__smoothing_strategy(%d,1) = Smoothing_strategy;\n',dat_id)
+                fprintf('........DTB__elab_parameters__smoothing_slider_val(%d,1) = Smoothing_Slider;\n',dat_id)
+                fprintf('........DTB__elab_parameters__hvsr_strategy(%d,1) = specratio_strategy;\n',dat_id)
             end
             %% compute average H/V (full)
-            nw = DTB{dat_id,1}.wndows.number;% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
-            ave_HV_full = sum(DTB{dat_id,1}.section.HV_windows,2)./nw;
-            ave_EV_full = sum(DTB{dat_id,1}.section.EV_windows,2)./nw;
-            ave_NV_full = sum(DTB{dat_id,1}.section.NV_windows,2)./nw;
+            nw = DTB__windows__number(dat_id,1);% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
+            ave_HV_full = sum(DTB__section__HV_windows{dat_id,1},2)./nw;
+            ave_EV_full = sum(DTB__section__EV_windows{dat_id,1},2)./nw;
+            ave_NV_full = sum(DTB__section__NV_windows{dat_id,1},2)./nw;
             %
             %% compute average H/V (clean)
-            OKS = DTB{dat_id,1}.wndows.is_ok;
+            OKS = DTB__windows__is_ok{dat_id,1};
             [rr,~] = find(OKS==1);
             nw_clean = sum(OKS);
-            ave_HV = sum(DTB{dat_id,1}.section.HV_windows(:,rr), 2)./nw_clean;
-            ave_EV = sum(DTB{dat_id,1}.section.EV_windows(:,rr), 2)./nw_clean;
-            ave_NV = sum(DTB{dat_id,1}.section.NV_windows(:,rr), 2)./nw_clean;
+            ave_HV = sum(DTB__section__HV_windows{dat_id,1}(:,rr), 2)./nw_clean;
+            ave_EV = sum(DTB__section__EV_windows{dat_id,1}(:,rr), 2)./nw_clean;
+            ave_NV = sum(DTB__section__NV_windows{dat_id,1}(:,rr), 2)./nw_clean;
             %
-            ave_V = sum(DTB{dat_id,1}.section.V_windows(:,rr), 2)./nw_clean;
-            ave_E = sum(DTB{dat_id,1}.section.E_windows(:,rr), 2)./nw_clean;
-            ave_N = sum(DTB{dat_id,1}.section.N_windows(:,rr), 2)./nw_clean;
+            ave_V = sum(DTB__section__V_windows{dat_id,1}(:,rr), 2)./nw_clean;
+            ave_E = sum(DTB__section__E_windows{dat_id,1}(:,rr), 2)./nw_clean;
+            ave_N = sum(DTB__section__N_windows{dat_id,1}(:,rr), 2)./nw_clean;
            
             %    
             %% store results
-            DTB{dat_id,1}.hvsr.curve_full    = ave_HV_full;
-            DTB{dat_id,1}.hvsr.curve_EV_full = ave_EV_full;
-            DTB{dat_id,1}.hvsr.curve_NV_full = ave_NV_full;
+            DTB__hvsr__curve_full{dat_id,1}    = ave_HV_full;
+            DTB__hvsr__curve_EV_full{dat_id,1} = ave_EV_full;
+            DTB__hvsr__curve_NV_full{dat_id,1} = ave_NV_full;
             %
-            DTB{dat_id,1}.hvsr.curve = ave_HV;
-            DTB{dat_id,1}.hvsr.curve_EV = ave_EV;
-            DTB{dat_id,1}.hvsr.curve_NV = ave_NV;
+            DTB__hvsr__curve{dat_id,1} = ave_HV;
+            DTB__hvsr__curve_EV{dat_id,1} = ave_EV;
+            DTB__hvsr__curve_NV{dat_id,1} = ave_NV;
             %
-            DTB{dat_id,1}.section.Average_V = ave_V;
-            DTB{dat_id,1}.section.Average_E = ave_E;
-            DTB{dat_id,1}.section.Average_N = ave_N;
+            DTB__section__Average_V{dat_id,1} = ave_V;
+            DTB__section__Average_E{dat_id,1} = ave_E;
+            DTB__section__Average_N{dat_id,1} = ave_N;
             if strcmp(P.ExtraFeatures.debug_mode,'on')
-                fprintf('........DTB{%d,1}.hvsr.curve_full\n',dat_id)
-                fprintf('........DTB{%d,1}.hvsr.curve_EV_full\n',dat_id)
-                fprintf('........DTB{%d,1}.hvsr.curve_NV_full\n',dat_id)
-                fprintf('........DTB{%d,1}.hvsr.curve\n',dat_id)
-                fprintf('........DTB{%d,1}.hvsr.curve_EV\n',dat_id)
-                fprintf('........DTB{%d,1}.hvsr.curve_NV\n',dat_id)
-                fprintf('........DTB{%d,1}.section.Average_V\n',dat_id)
-                fprintf('........DTB{%d,1}.section.Average_E\n',dat_id)
-                fprintf('........DTB{%d,1}.section.Average_N\n',dat_id)
+                fprintf('........DTB__hvsr__curve_full{%d,1}\n',dat_id)
+                fprintf('........DTB__hvsr__curve_EV_full{%d,1}\n',dat_id)
+                fprintf('........DTB__hvsr__curve_NV_full{%d,1}\n',dat_id)
+                fprintf('........DTB__hvsr__curve{%d,1}\n',dat_id)
+                fprintf('........DTB__hvsr__curve_EV{%d,1}\n',dat_id)
+                fprintf('........DTB__hvsr__curve_NV{%d,1}\n',dat_id)
+                fprintf('........DTB__section__Average_V{%d,1}\n',dat_id)
+                fprintf('........DTB__section__Average_E{%d,1}\n',dat_id)
+                fprintf('........DTB__section__Average_N{%d,1}\n',dat_id)
             end
             
             
             
             %
             %% alternative code to compute "clean" average spectral ratios           
-%             ave_HV= 0*DTB{dat_id,1}.hvsr.curve_full;
+%             ave_HV= 0*DTB__hvsr__curve_full{dat_id,1};
 %             ave_EV = ave_HV;
 %             ave_NV = ave_HV;
 %             ave_V  = ave_HV;
@@ -9040,32 +9702,32 @@ fprintf('[READY !]\n');
 %             
 %             for w = 1:nw
 %                 if( OKS(w)==1 )
-%                     ave_HV = ave_HV+DTB{dat_id,1}.section.HV_windows(:,w);
-%                     ave_EV = ave_EV+DTB{dat_id,1}.section.EV_windows(:,w);
-%                     ave_NV = ave_NV+DTB{dat_id,1}.section.NV_windows(:,w);
+%                     ave_HV = ave_HV+DTB__section__HV_windows{dat_id,1}(:,w);
+%                     ave_EV = ave_EV+DTB__section__EV_windows{dat_id,1}(:,w);
+%                     ave_NV = ave_NV+DTB__section__NV_windows{dat_id,1}(:,w);
 %                     %
-%                     ave_V = ave_V + DTB{dat_id,1}.section.V_windows(:,w);
-%                     ave_E = ave_E+ DTB{dat_id,1}.section.E_windows(:,w);
-%                     ave_N = ave_N+ DTB{dat_id,1}.section.N_windows(:,w);
+%                     ave_V = ave_V + DTB__section__V_windows{dat_id,1}(:,w);
+%                     ave_E = ave_E + DTB__section__E_windows{dat_id,1}(:,w);
+%                     ave_N = ave_N + DTB__section__N_windows{dat_id,1}(:,w);
 %                 end
 %             end
 % 
-%             DTB{dat_id,1}.hvsr.curve = ave_HV./nw_clean;
-%             DTB{dat_id,1}.hvsr.curve_EV = ave_EV./nw_clean;
-%             DTB{dat_id,1}.hvsr.curve_NV = ave_NV./nw_clean;
+%             DTB__hvsr__curve{dat_id,1} = ave_HV./nw_clean;
+%             DTB__hvsr__curve_EV{dat_id,1} = ave_EV./nw_clean;
+%             DTB__hvsr__curve_NV{dat_id,1} = ave_NV./nw_clean;
 %             %
-%             DTB{dat_id,1}.section.Average_V = ave_V./nw_clean;
-%             DTB{dat_id,1}.section.Average_E = ave_E./nw_clean;
-%             DTB{dat_id,1}.section.Average_N = ave_N./nw_clean;
+%             DTB__section__Average_V{dat_id,1} = ave_V./nw_clean;
+%             DTB__section__Average_E{dat_id,1} = ave_E./nw_clean;
+%             DTB__section__Average_N{dat_id,1} = ave_N./nw_clean;
             %%            %            
             %% Standard deviation
             sum_diff_squared_full = zeros(size(ave_HV_full,1),1);%0*ave_HV_full;
             sum_diff_squared_clean  = zeros(size(ave_HV_full,1),1);%0*ave_HV_full;
             for w = 1:nw
-                sum_diff_squared_full = sum_diff_squared_full+(DTB{dat_id,1}.section.HV_windows(:,w)-ave_HV_full).^2;
+                sum_diff_squared_full = sum_diff_squared_full+(DTB__section__HV_windows{dat_id,1}(:,w)-ave_HV_full).^2;
                 if( OKS(w)==1 )
                     %ave_HV is the clean curve
-                    sum_diff_squared_clean = sum_diff_squared_clean+(DTB{dat_id,1}.section.HV_windows(:,w)-ave_HV).^2;
+                    sum_diff_squared_clean = sum_diff_squared_clean+(DTB__section__HV_windows{dat_id,1}(:,w)-ave_HV).^2;
                 end
             end
             standard_deviat_full = sqrt(sum_diff_squared_full/(nw-1));
@@ -9073,16 +9735,16 @@ fprintf('[READY !]\n');
             %
             standard_deviat_clean = sqrt(sum_diff_squared_clean/(nw_clean-1));
             %DTB{dat_id,1}.hvsr.error = standard_deviat_clean./ave_HV;% relative error
-            DTB{dat_id,1}.hvsr.standard_deviation = standard_deviat_clean;
+            DTB__hvsr__standard_deviation{dat_id,1} = standard_deviat_clean;
             %% Confidence (95%)
             % of clean curve
             SEM_f = standard_deviat_clean./sqrt(nw_clean);% Standard error(f)
             ts = tinv(0.975, (nw_clean-1) );              % T-Score
-            DTB{dat_id,1}.hvsr.confidence95 = ts*SEM_f;
+            DTB__hvsr__confidence95{dat_id,1} = ts*SEM_f;
             % of original
             SEM_f = standard_deviat_full./sqrt(nw);% Standard error(f)
             ts = tinv(0.975, (nw-1) );             % T-Score
-            DTB{dat_id,1}.hvsr.confidence95_full = ts*SEM_f;
+            DTB__hvsr__confidence95_full{dat_id,1} = ts*SEM_f;
             %
             % if strcmp(P.ExtraFeatures.debug_mode,'on')
             %     fprintf('........DTB{%d,1}.hvsr.error_full\n',dat_id)
@@ -9095,7 +9757,6 @@ fprintf('[READY !]\n');
             for r = 1:nf_curve
                 if(ave_HV(r)== maxampl)
                     main_peak_id = r;
-                    %fprintf('MAX PEAK = %f\n',df*(main_peak_id + DTB{dat_id,1}.section.Frequency_Vector(1) -1))
                     break;
                 end
             end
@@ -9124,11 +9785,11 @@ fprintf('[READY !]\n');
 % %             peaks   = peaks(1:found_peaks);
 % %             hollows = hollows(1:found_hollows);
 % %             %
-% %             DTB{dat_id,1}.hvsr.peaks_idx = peaks;
-% %             DTB{dat_id,1}.hvsr.hollows_idx = hollows;
+% %             DTB__hvsr__peaks_idx{dat_id,1} = peaks;
+% %             DTB__hvsr__hollows_idx{dat_id,1} = hollows;
 % %             if strcmp(P.ExtraFeatures.debug_mode,'on')
-% %                 fprintf('........DTB{%d,1}.hvsr.peaks_idx = peaks;\n',dat_id)
-% %                 fprintf('........DTB{%d,1}.hvsr.hollows_idx = hollows;\n',dat_id)
+% %                 fprintf('........DTB__hvsr__peaks_idx{%d,1} = peaks;\n',dat_id)
+% %                 fprintf('........DTB__hvsr__hollows_idx{%d,1} = hollows;\n',dat_id)
 % %             end
             %% peaks and hollows [END](DEVELOPMENT)
             %% main peak
@@ -9136,22 +9797,22 @@ fprintf('[READY !]\n');
                 %[main_peak_id,~] = find(ave_HV == max(ave_HV));
                 main_peak_id = 1;%main_peak_id(1);
             end
-            DTB{dat_id,1}.hvsr.user_main_peak_frequence = NaN;
-            DTB{dat_id,1}.hvsr.user_main_peak_amplitude = NaN;
-            DTB{dat_id,1}.hvsr.user_main_peak_id_full_curve = NaN;
-            DTB{dat_id,1}.hvsr.user_main_peak_id_in_section = NaN;
+            DTB__hvsr__user_main_peak_frequence(dat_id,1) = NaN;
+            DTB__hvsr__user_main_peak_amplitude(dat_id,1) = NaN;
+            DTB__hvsr__user_main_peak_id_full_curve(dat_id,1) = NaN;
+            DTB__hvsr__user_main_peak_id_in_section(dat_id,1) = NaN;
             %
-            fpeak = df*(main_peak_id + DTB{dat_id,1}.section.Frequency_Vector(1) -1);
+            fpeak = df*(main_peak_id + DTB__section__Frequency_Vector{dat_id,1}(1) -1);
             apeak = ave_HV(main_peak_id);
-            DTB{dat_id,1}.hvsr.auto_main_peak_frequence = fpeak;
-            DTB{dat_id,1}.hvsr.auto_main_peak_amplitude = apeak;
-            DTB{dat_id,1}.hvsr.auto_main_peak_id_full_curve= (main_peak_id + DTB{dat_id,1}.section.Frequency_Vector(1) -1);
-            DTB{dat_id,1}.hvsr.auto_main_peak_id_in_section = main_peak_id;
+            DTB__hvsr__auto_main_peak_frequence(dat_id,1) = fpeak;
+            DTB__hvsr__auto_main_peak_amplitude(dat_id,1) = apeak;
+            DTB__hvsr__auto_main_peak_id_full_curve(dat_id,1)= (main_peak_id + DTB__section__Frequency_Vector{dat_id,1}(1) -1);
+            DTB__hvsr__auto_main_peak_id_in_section(dat_id,1) = main_peak_id;
             %
             %% SESAME peak (DEVELOPMENT)
 % %             idxp = DTB{dat_id,1}.section.Frequency_Vector(1) -1;% to change betwee id in section and global
-% %             Lw = DTB{dat_id,1}.wndows.width_sec;
-% %             Nw = sum(DTB{dat_id,1}.wndows.is_ok);
+% %             Lw = DTB{dat_id,1}.windows.width_sec;
+% %             Nw = sum(DTB{dat_id,1}.windows.is_ok);
 % %             %
 % %             Lw10 = 10/Lw;
 % %             LwNw =Lw*Nw;
@@ -9195,24 +9856,24 @@ fprintf('[READY !]\n');
 % %                     fprintf('SESAME PEAK = %f\n',f0)
 % %                     %
 % %                     % keep sesame 
-% %                     DTB{dat_id,1}.hvsr.auto_main_peak_frequence    = f0;
-% %                     DTB{dat_id,1}.hvsr.auto_main_peak_amplitude    = ave_HV(peak_id);
-% %                     DTB{dat_id,1}.hvsr.auto_main_peak_id_full_curve= (peak_id + DTB{dat_id,1}.section.Frequency_Vector(1) -1);
-% %                     DTB{dat_id,1}.hvsr.auto_main_peak_id_in_section= peak_id; 
+% %                     DTB__hvsr__auto_main_peak_frequence(dat_id,1)    = f0;
+% %                     DTB__hvsr__auto_main_peak_amplitude(dat_id,1)    = ave_HV(peak_id);
+% %                     DTB__hvsr__auto_main_peak_id_full_curve(dat_id,1)= (peak_id + DTB{dat_id,1}.section.Frequency_Vector(1) -1);
+% %                     DTB__hvsr__auto_main_peak_id_in_section({dat_id,1}= peak_id; 
 % %                     break;
 % %                 end
 % %             end
             %% SESAME peak [END](DEVELOPMENT)
             %% extra
-            if strcmp(P.ExtraFeatures.debug_mode,'on')
-                fprintf('........DTB{%d,1}.hvsr.auto_main_peak_id = main_peak_id;\n',dat_id)
-            end    
+%            if strcmp(P.ExtraFeatures.debug_mode,'on')
+ %               fprintf('........DTB{%d,1}.hvsr.auto_main_peak_id = main_peak_id;\n',dat_id)
+ %           end    
         else
             fprintf('DATA %d IS LOCKED\n',dat_id)
         end
     end
     function compute_single_hv180(dat_id)
-        if DTB{dat_id,1}.status == 1% if status == 0 data will not be changed
+        if DTB__status(dat_id,1) == 1% if status == 0 data will not be changed
             % conventionally nord component is display y-axis
             % and east component is the x-axis
             %
@@ -9220,18 +9881,18 @@ fprintf('[READY !]\n');
             % counterclockwise
             %
             angle_id = get(T3_P1_angular_samp,'Value');
-            DTB{dat_id,1}.hvsr180.angle_id = angle_id;
+            DTB__hvsr180__angle_id(dat_id,1) = angle_id;
 
             if angle_id>1% is off, clean up
                 rtog = 180/pi;
                 stgs=get(T3_P1_angular_samp,'String');
                 angle_step = str2double(  stgs(angle_id,:)  );% degrees
                 %
-                ifmin = DTB{dat_id,1}.section.Frequency_Vector(1);
-                ifmax = DTB{dat_id,1}.section.Frequency_Vector(2);
+                ifmin = DTB__section__Frequency_Vector{dat_id,1}(1);
+                ifmax = DTB__section__Frequency_Vector{dat_id,1}(2);
                 nf_curve = ifmax-ifmin+1;
                 %
-                df = DTB{dat_id,1}.section.Frequency_Vector(3);
+                df = DTB__section__Frequency_Vector{dat_id,1}(3);
                 Fvect = df*(  (ifmin-1) : (ifmax-1) );
                 %
                 % rr:2pi = gg:360  >> gg 2pi = rr 360 
@@ -9239,12 +9900,12 @@ fprintf('[READY !]\n');
                 rads = pi * ( 0:theta:(180-theta) ) /180;
                 HV180 = zeros(nf_curve, length(rads));
                 %
-                E = DTB{dat_id,1}.wndows.wine;
-                N = DTB{dat_id,1}.wndows.winn;
-                V = DTB{dat_id,1}.wndows.winv;
+                E = DTB__windows__wine{dat_id,1};
+                N = DTB__windows__winn{dat_id,1};
+                V = DTB__windows__winv{dat_id,1};
                 %
                 fs = sampling_frequences(dat_id);%         sampling frequence
-                npad = DTB{dat_id}.wndows.info(6);% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
+                npad = DTB__windows__info(dat_id,6);% [ns, ns_window, ns_overlap, 0, 0, ns_pad];
                 [FT, ~] = samfft(V, fs, npad);
                 FT = FT( ifmin:ifmax, :);
                 Vd = smoothing(2*abs(FT), Fvect);
@@ -9273,9 +9934,9 @@ fprintf('[READY !]\n');
                     HHr = smoothing(2*abs(FT), Fvect);
                     HVd = HHr./Vd;
                     %% average curve
-                    OKS = DTB{dat_id,1}.wndows.is_ok;
+                    OKS = DTB__windows__is_ok{dat_id,1};
                     nok = sum(OKS);
-                    nw = DTB{dat_id,1}.wndows.number;
+                    nw = DTB__windows__number(dat_id,1);
                     ave_hv= 0*HVd(:,1);
                     for w = 1:nw
                         if( OKS(w)==1 )
@@ -9285,8 +9946,8 @@ fprintf('[READY !]\n');
                     HV_curve= ave_hv/nok;
                     HV180(:,th) = HV_curve;
                 end
-                DTB{dat_id,1}.hvsr180.angle_step = theta;
-                DTB{dat_id,1}.hvsr180.spectralratio = HV180;
+                DTB__hvsr180__angle_step(dat_id,1) = theta;
+                DTB__hvsr180__spectralratio{dat_id,1} = HV180;
                 %%
                 preferred_direction = zeros( size(HV180,1), 10);
                 for ff=1:size(HV180,1)% run along frequences
@@ -9308,15 +9969,15 @@ fprintf('[READY !]\n');
                             frq,aver];
                     end
                 end
-                DTB{dat_id,1}.hvsr180.preferred_direction = preferred_direction;
+                DTB__hvsr180__preferred_direction{dat_id,1} = preferred_direction;
                 %
                 if strcmp(P.ExtraFeatures.debug_mode,'on')
                     fprintf('....sets:\n')
-                    fprintf('........DTB{%d,1}.hvsr180.angle_id\n',dat_id)
-                    fprintf('........DTB{%d,1}.hvsr180.angles\n',dat_id)
-                    fprintf('........DTB{%d,1}.hvsr180.angle_step = theta;\n',dat_id)
-                    fprintf('........DTB{%d,1}.hvsr180.spectralratio\n',dat_id)
-                    fprintf('........DTB{%d,1}.hvsr180.preferred_direction\n',dat_id)
+                    fprintf('........DTB__hvsr180__angle_id(%d,1)\n',dat_id)
+                    fprintf('........DTB__hvsr180__angles{%d,1}\n',dat_id)
+                    fprintf('........DTB__hvsr180__angle_step(%d,1) = theta;\n',dat_id)
+                    fprintf('........DTB__hvsr180__spectralratio{%d,1}\n',dat_id)
+                    fprintf('........DTB__hvsr180__preferred_direction{%d,1}\n',dat_id)
 
 
                     fprintf('NO........DTB{%d,1}.hvsr180.peaks_idx{th}\n',dat_id)
@@ -9335,13 +9996,13 @@ fprintf('[READY !]\n');
         clc
         % checks
         for dd = 1:Ndata
-            if DTB{dd,1}.status ~= 1; continue; end
+            if DTB__status(dd,1) ~= 1; continue; end
             if 0<check_filter_status(dd); return; end
         end
         %
         % windowing
         for dd = 1:Ndata
-            if DTB{dd,1}.status ~= 1; continue; end
+            if DTB__status(dd,1) ~= 1; continue; end
             fprintf('Windowing File[%d]: %s\n',dd,SURVEYS{dd,2})
             compute_single_windowing(dd);
         end
@@ -9354,7 +10015,7 @@ fprintf('[READY !]\n');
         %
         for dd = 1:Ndata
             % fprintf('File: %d\n',d)
-            if DTB{dd,1}.wndows.number==0; continue; end
+            if DTB__windows__number(dd,1)==0; continue; end
             database_single_computation(dd);
             status = 1;
         end
@@ -9475,17 +10136,17 @@ fprintf('[READY !]\n');
             
             for ss = 1:Ndata
                 %% write files.hv -----------------------------------------
-                if ~isempty(DTB{ss,1}.hvsr.curve)
+                if ~isempty(DTB__hvsr__curve{ss,1})
                     [~,s,~]=fileparts(SURVEYS{ss,2});
                     fname = strcat(folder_name,'/',s,'.hv');
                     %
-                    df = DTB{ss,1}.section.Frequency_Vector(3);
-                    Fvec  = df*(  (DTB{ss,1}.section.Frequency_Vector(1)-1) : (DTB{ss,1}.section.Frequency_Vector(2)-1) ).';%% WARNING assume same frequence discretization 
-                    hvsr  = DTB{ss,1}.hvsr.curve;
-                    hvsrNV= DTB{ss,1}.hvsr.curve_NV;
-                    hvsrEV= DTB{ss,1}.hvsr.curve_EV;
-                    STdev = DTB{ss,1}.hvsr.standard_deviation;% sqrt(sum_diff_squared_clean/(nw_clean-1));
-                    Confidence95 = DTB{ss,1}.hvsr.confidence95; 
+                    df = DTB__section__Frequency_Vector{ss,1}(3);
+                    Fvec  = df*(  (DTB__section__Frequency_Vector{ss,1}(1)-1) : (DTB__section__Frequency_Vector{ss,1}(2)-1) ).';%% WARNING assume same frequence discretization 
+                    hvsr  = DTB__hvsr__curve{ss,1};
+                    hvsrNV= DTB__hvsr__curve_NV{ss,1};
+                    hvsrEV= DTB__hvsr__curve_EV{ss,1};
+                    STdev = DTB__hvsr__standard_deviation{ss,1};
+                    Confidence95 = DTB__hvsr__confidence95{ss,1}; 
                     %
                     fid = fopen(fname,'w');
                     fprintf(fid,'# %s, %s: HVSR output\n',P.appname,P.appversion);
@@ -9493,44 +10154,44 @@ fprintf('[READY !]\n');
                     fprintf(fid,'#\n');
                     fprintf(fid,'#\n');
                     fprintf(fid,'# ================= INFO =================\n');
-                    fprintf(fid,'# Number of windows = %d\n',DTB{ss,1}.wndows.number);
-                    fprintf(fid,'# Number of windows considered = %d\n',sum(DTB{ss,1}.wndows.is_ok));
-                    fprintf(fid,'# Automatic peak: f0 = %3.2f\n', DTB{ss,1}.hvsr.auto_main_peak_frequence);
-                    fprintf(fid,'# Automatic peak: Amplitude = %3.2f\n', DTB{ss,1}.hvsr.auto_main_peak_amplitude);
-                    if isnan(DTB{ss,1}.hvsr.user_main_peak_frequence)
+                    fprintf(fid,'# Number of windows = %d\n',DTB__windows__number(ss,1));
+                    fprintf(fid,'# Number of windows considered = %d\n',sum(DTB__windows__is_ok{ss,1}));
+                    fprintf(fid,'# Automatic peak: f0 = %3.2f\n', DTB__hvsr__auto_main_peak_frequence(ss,1));
+                    fprintf(fid,'# Automatic peak: Amplitude = %3.2f\n', DTB__hvsr__auto_main_peak_amplitude(ss,1));
+                    if isnan(DTB__hvsr__user_main_peak_frequence(ss,1))
                         fprintf(fid,'# Manual peak: f0 = n.a.\n');
                         fprintf(fid,'# Manual peak: Amplitude = n.a.\n');
                     else
-                        fprintf(fid,'# Manual peak: f0 = %3.2f\n', DTB{ss,1}.hvsr.user_main_peak_frequence);
-                        fprintf(fid,'# Manual peak: Amplitude = %3.2f\n', DTB{ss,1}.hvsr.user_main_peak_amplitude);
+                        fprintf(fid,'# Manual peak: f0 = %3.2f\n', DTB__hvsr__user_main_peak_frequence(ss,1));
+                        fprintf(fid,'# Manual peak: Amplitude = %3.2f\n', DTB__hvsr__user_main_peak_amplitude(ss,1));
                     end
                     fprintf(fid,'#\n');
                     fprintf(fid,'#\n');
                     fprintf(fid,'# ======== PROCESSING PARAMETERS =========\n');
-                    fprintf(fid,'# windows width (seconds) = %3.2f\n',DTB{ss,1}.elab_parameters.windows_width);
-                    fprintf(fid,'# windows overlap (%%) = %3.2f\n',DTB{ss,1}.elab_parameters.windows_overlap);
-                    fprintf(fid,'# windows tapering (%%) = %3.2f\n',DTB{ss,1}.elab_parameters.windows_tapering);
+                    fprintf(fid,'# windows width (seconds) = %3.2f\n',DTB__elab_parameters__windows_width(ss,1));
+                    fprintf(fid,'# windows overlap (%%) = %3.2f\n',DTB__elab_parameters__windows_overlap(ss,1));
+                    fprintf(fid,'# windows tapering (%%) = %3.2f\n',DTB__elab_parameters__windows_tapering(ss,1));
                     fprintf(fid,'# frequence delta (Hz) = %f\n',df);
-                    fprintf(fid,'# STA/LTA = %f\n',DTB{ss,1}.elab_parameters.windows_sta_vs_lta);
+                    fprintf(fid,'# STA/LTA = %f\n',DTB__elab_parameters__windows_sta_vs_lta(ss,1));
                     %
-                    if strcmp(DTB{ss,1}.elab_parameters.windows_pad, 'off')
+                    if strcmp(DTB__elab_parameters__windows_pad{ss,1}, 'off')
                         fprintf(fid,'# windows pad: off\n');
                     else
-                        fprintf(fid,'# windows pad: %d\n',DTB{ss,1}.elab_parameters.windows_pad);
+                        fprintf(fid,'# windows pad: %d\n',DTB__elab_parameters__windows_pad{ss,1});
                     end
                     %
                     % HV strategy
-                    strategy_id = DTB{ss,1}.elab_parameters.hvsr_strategy;
+                    strategy_id = DTB__elab_parameters__hvsr_strategy(ss,1);
                     dummystring = get(T2_PA_HV,'String');
                     fprintf(fid,'# HV Ratio strategy: %s\n',dummystring{strategy_id});
                     %
                     % smoothing strategy
-                    strategy_id = DTB{ss,1}.elab_parameters.smoothing_strategy;
+                    strategy_id = DTB__elab_parameters__smoothing_strategy(ss,1);
                     dummystring = get(T3_PA_wsmooth_strategy,'String');
                     fprintf(fid,'# smoothing strategy: %s\n',dummystring{strategy_id});
                     %
                     % smoothing constant
-                    amount_slider=DTB{ss,1}.elab_parameters.smoothing_slider_val;
+                    amount_slider=DTB__elab_parameters__smoothing_slider_val(ss,1);
                     switch strategy_id
                         case 1% Konno Ohmachi
                             amount = 5 + fix(amount_slider*95);
@@ -9577,7 +10238,7 @@ fprintf('[READY !]\n');
         if(folder_name)
             Ndata = size(SURVEYS,1);
             for d = 1:Ndata
-                if DTB{d,1}.wndows.number>0
+                if DTB__windows__number(d,1)>0
                     no_procede = 1;  
                 end
             end
@@ -9594,13 +10255,13 @@ fprintf('[READY !]\n');
             for d = 1:Ndata
                 XY(d,1) = SURVEYS{d,1}(1);
                 XY(d,2) = SURVEYS{d,1}(2);
-                if ~isnan(DTB{d,1}.hvsr.user_main_peak_frequence)
-                    F0(d) = DTB{d,1}.hvsr.user_main_peak_frequence;% user selection is always preferred
-                    A0(d) = DTB{d,1}.hvsr.user_main_peak_amplitude;% user selection is always preferred
+                if ~isnan(DTB__hvsr__user_main_peak_frequence(d,1))
+                    F0(d) = DTB__hvsr__user_main_peak_frequence(d,1);% user selection is always preferred
+                    A0(d) = DTB__hvsr__user_main_peak_amplitude(d,1);% user selection is always preferred
                 else
-                    if ~isnan(DTB{d,1}.hvsr.auto_main_peak_frequence)
-                        F0(d) = DTB{d,1}.hvsr.auto_main_peak_frequence;
-                        A0(d) = DTB{d,1}.hvsr.auto_main_peak_amplitude;
+                    if ~isnan(DTB__hvsr__auto_main_peak_frequence(d,1))
+                        F0(d) = DTB__hvsr__auto_main_peak_frequence(d,1);
+                        A0(d) = DTB__hvsr__auto_main_peak_amplitude(d,1);
                     else
                         F0(d)=NaN;
                         A0(d)=NaN;
@@ -9660,37 +10321,37 @@ fprintf('[READY !]\n');
             if ddf==0; ddf=10; end%    20180718
             %
             for d = 1:Ndata
-                if ~isnan(DTB{d,1}.hvsr.user_main_peak_amplitude)
-                    PeakId = DTB{d,1}.hvsr.user_main_peak_id_in_section;
-                    PeakFr = DTB{d,1}.hvsr.user_main_peak_frequence;% 20180719
+                if ~isnan(DTB__hvsr__user_main_peak_amplitude(d,1))
+                    PeakId = DTB__hvsr__user_main_peak_id_in_section(d,1);
+                    PeakFr = DTB__hvsr__user_main_peak_frequence(d,1);% 20180719
                 else
-                    PeakId = DTB{d,1}.hvsr.auto_main_peak_id_in_section;
-                    PeakFr = DTB{d,1}.hvsr.auto_main_peak_frequence;% 20180719
+                    PeakId = DTB__hvsr__auto_main_peak_id_in_section(d,1);
+                    PeakFr = DTB__hvsr__auto_main_peak_frequence(d,1);% 20180719
                 end
-                Ampl(d)= DTB{d,1}.hvsr180.preferred_direction(PeakId,2);
+                Ampl(d)= DTB__hvsr180__preferred_direction{d,1}(PeakId,2);
                 %
                 % main peak
-                DirectionalPeakValues{d,1} = DTB{d,1}.hvsr180.spectralratio(PeakId, :);
+                DirectionalPeakValues{d,1} = DTB__hvsr180__spectralratio{d,1}(PeakId, :);
                 [~,c] = find(DirectionalPeakValues{d}==max(DirectionalPeakValues{d}));
                 %
                 MaindirectionId(d)=c(1);
-                theta = DTB{d,1}.hvsr180.angle_step;
+                theta = DTB__hvsr180__angle_step(d,1);
                 angles = 0:theta:(180-theta);
                 Grads(d) = angles(MaindirectionId(d));
                 %
                 % around main peak (to be sure that not much variability is present)
-                offseti = DTB{d,1}.section.Frequency_Vector(1);
-                odf = DTB{d,1}.section.Frequency_Vector(3); 
+                offseti = DTB__section__Frequency_Vector{d,1}(1);
+                odf = DTB__section__Frequency_Vector{d,1}(3); 
                 ni1 = ceil( (PeakFr*(1-ddf/100))/odf )   -offseti ;%               20180719
                 ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%               20180719
                 istr = ni1; if istr<1; istr=1; end
-                istp = ni2; if istp>size(DTB{d,1}.hvsr180.preferred_direction,1); istp=PeakId; end
+                istp = ni2; if istp>size(DTB__hvsr180__preferred_direction{d,1},1); istp=PeakId; end
                 %
                 fprintf('[%d]  angle[%d]   Range[%3.2f][%3.2f]    with peak at:[%3.2f]\n',d,Grads(d) ,ni1*odf,ni2*odf, F0(d));
                 ids =  istr:istp;
-                directs = DTB{d,1}.hvsr180.preferred_direction(ids,1);
+                directs = DTB__hvsr180__preferred_direction{d,1}(ids,1);
                 Df_Grads{d,1} = angles(directs);
-                Df_Ampl{d,1}  = DTB{d,1}.hvsr180.preferred_direction(ids,2);
+                Df_Ampl{d,1}  = DTB__hvsr180__preferred_direction{d,1}(ids,2);
                 Df_info{d,1}  = [PeakFr, ni1*odf,ni2*odf];
 
             end

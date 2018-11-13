@@ -20,8 +20,13 @@
 %
 %
 gui_3D();
-
-
+%
+% CHANGELOG
+%
+% Version 1.0.0 First release
+% Version 2.0.0
+%       * Optimized memory and space on disk usage
+%       * Solved bug for ginput(2) in Matlab R2018a/R2018b
 
 
 

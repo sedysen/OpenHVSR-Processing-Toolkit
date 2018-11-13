@@ -41,7 +41,7 @@ USER_PREFERENCE_enable_Matlab_default_menu       = 0;% [0=off/ 1=on]
 % 
 %
 %%    Reference System (on interface)
-USER_PREFERENCE_hvsr_directional_reference_system= 'compass';% [ 'default': 0째is East; 180째is West] [ 'compas'  -90째is West; 90째is East]
+USER_PREFERENCE_hvsr_directional_reference_system= 'compass';% [ 'default': 0컄s East; 180컄s West] [ 'compas'  -90컄s West; 90컄s East]
 %                    
 % 
 % 

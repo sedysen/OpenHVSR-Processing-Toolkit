@@ -20,6 +20,7 @@
 %
 %
 function [X,Y,Z,V,p1,p2] = smoothvolume3(X,Y,Z,V, xl,yl,zl, cutplanes)
+
 %clc
 % x-/x-
 Lx = size(V,2);
