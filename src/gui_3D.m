@@ -1206,6 +1206,7 @@ uimenu(hAx_speN_hcmenu , 'Label', 'Edit externally',       'Callback',{@plot_ext
 
 pos_axs_speV = [0.06 0.1    0.2725 0.9];%[0.05 0.05    0.275 0.9];
 hAx_speV= axes('Parent',H.PANELS{P.tab_id}.C,'Units', 'normalized','FontSize',USER_PREFERENCE_interface_objects_fontsize,'Position',pos_axs_speV,'uicontextmenu',hAx_speN_hcmenu,'UserData','V');
+if Matlab_Release_num>2018.1; disableDefaultInteractivity(hAx_speV); end
 pos_axs_speE = [0.39 0.1    0.2725 0.9];%[0.35 0.05   0.275 0.9];
 hAx_speE= axes('Parent',H.PANELS{P.tab_id}.C,'Units', 'normalized','FontSize',USER_PREFERENCE_interface_objects_fontsize,'Position',pos_axs_speE,'uicontextmenu',hAx_speN_hcmenu,'UserData','E');
 pos_axs_speN = [0.72 0.1    0.2725 0.9];%[0.65 0.05    0.275 0.9];
@@ -2007,6 +2008,10 @@ if exist('history.m', 'file') == 2
 history
 end
 Pfunction__publish_gui(H.gui,H.menu.credits,P.appname,P.appversion);
+%plottools(H.gui,'off')
+set(H.gui, 'MenuBar', 'none');
+set(H.gui, 'ToolBar', 'none');
+%removeToolbarExplorationButtons(H.gui)
 fprintf('[READY !]\n');
 %
 %
@@ -2098,8 +2103,6 @@ fprintf('[READY !]\n');
             working_folder = thispath;
             last_project_name = file;
             if get(H.menu.settings.log,'UserData')==1; last_log_number=last_log_number+1; end
-            %if exist('')
-            
             fid = fopen('history.m','w');
             fprintf(fid, 'working_folder = ''%s'';\n', working_folder);
             fprintf(fid, 'last_project_name = ''%s'';\n', last_project_name);
@@ -2648,7 +2651,6 @@ fprintf('[READY !]\n');
             working_folder = thispath;
             last_elaboration_name = file;
             if get(H.menu.settings.log,'UserData')==1; last_log_number=last_log_number+1; end
-            %if exist('')
             
             fid = fopen('history.m','w');
             fprintf(fid, 'working_folder = ''%s'';\n', working_folder);
@@ -3354,31 +3356,52 @@ fprintf('[READY !]\n');
                         if(recta_kind==0) % rect y=mx+q    q=y-mx
                             m1 = (yy(2)-yy(1))/(xx(2)-xx(1));
                             q1 = yy(1) - m1*xx(1);
-                            dist = abs(receiver_locations(val,2) - (m1*receiver_locations(val,1) +q1))/sqrt(1+m1^2);
-                            % r1:  y = m1 x + q1
-                            % r2:  y = m2 x + q2
+                            dist = abs(receiver_locations(val,2) - (m1*receiver_locations(val,1) +q1))/sqrt(1+m1^2);% Equation 1
+                            %% info
+                            % r1:  y = m1 x + q1 (profile)
+                            % r2:  y = m2 x + q2 (line through the receiver and perpendicular to r1)
                             %
-                            % r passante per un pto e perp a retta data (y=m1 x +q):
+                            % rect given endpoints
+                            % r1 = m1 x + q1:    (ax +by +c = 0)
+                            %     a = y2-y1
+                            %     b = x2-x1
+                            %     c = x2 y1 - y2 x1
+                            %     m1 = -a/b = -(y2-y1)/(x2-x1) 
+                            %     q1  = y1 -m1 x1
+                            %
+                            % distance of point p (receiver) from the rect r1 (the profile). (Equation 1)
+                            % dist = |yp - m1 xp -q1 | / sqrt(1 + m1^1)
+                            %
+                            % rect (r2) through a point p and perpendicular to r1 (y=m1 x +q1):
                             % y = m2 xp + q2
                             % m2  = -1/m1
-                            % q2 = yp - m2 xp == yp +xp/m1  (A)
+                            % q2 = yp - m2 xp == yp +xp/m1  (Equation 2)
                             %
-                            % pto di intersezione di due rette
-                            %  x = -(q1-q2)/(m1-m2)
-                            %  y = -m1 (q1-q2)/(m1-m2) +q1
+                            % point of intersection of two rects
+                            % [ y = m2 x + q2
+                            % [ y = m1 x + q1
                             %
+                            % [ y = m2 x + q2
+                            % [ m2 x + q2 = m1 x + q1 -> x(m2-m1) = (q1-q2)
+                            %
+                            % [ y = m2 (q1-q2)/(m2-m1)+ q2
+                            % [ x = (q1-q2)/(m2-m1) 
+                            %%
                             m2 = -1/m1;
-                            q2 = receiver_locations(val,2) + receiver_locations(val,1)/m1;%  (A)
-                            xp = (q2-q1)/(m1-m2);
-                            yp = (m1*(q2-q1)/(m1-m2)+q1);
-                            drs= sqrt( (xx(1)-xp).^2 + (yy(1)-yp).^2 );
-                            
+                            q2 = receiver_locations(val,2) + receiver_locations(val,1)/m1;%  (Equation 2)  
+                            xp = (q1-q2)/(m2-m1);%             Point of intersection
+                            yp = m2*(q1-q2)/(m2-m1)+q2;% Point of intersection 
+                            drs= sqrt( (xx(1)-xp).^2 + (yy(1)-yp).^2 );% distances from beginning of profile
+                            %
                             far = dist;
                             dr  = drs;
                             if(xp < xx)
                                 dr = -dr;
                             end
                             P.profile_ids{P.profile.id,1} = [P.profile_ids{P.profile.id,1}; [val, dr, far]];%P.profile_ids = [P.profile_ids; [id, dr, far]];
+                            % val = station-ID
+                            % dr  = distance (along profile) from profile beginning
+                            % far = distance from profile
                             P.profile_onoff{P.profile.id,1}(val) = 1;
                         end
                         %
@@ -3469,7 +3492,21 @@ fprintf('[READY !]\n');
                     %
                     set(T1_PA_status ,'String','Unlocked')
             end
-            
+            % Propagate color
+            switch(DTB__status(P.isshown.id,1))
+                case 0
+                    set(T2_PB_datafile_txt,'BackgroundColor','g');
+                    set(T3_PB_datafile_txt,'BackgroundColor','g');
+                    set(T6_PB_datafile_txt,'BackgroundColor','g');
+                case 2
+                    set(T2_PB_datafile_txt,'BackgroundColor','r');
+                    set(T3_PB_datafile_txt,'BackgroundColor','r');
+                    set(T6_PB_datafile_txt,'BackgroundColor','r');
+                case 1
+                    set(T2_PB_datafile_txt,'BackgroundColor',Status_bkground_color);
+                    set(T3_PB_datafile_txt,'BackgroundColor',Status_bkground_color);
+                    set(T6_PB_datafile_txt,'BackgroundColor',Status_bkground_color);
+            end
         end
     end
 %% TAB-2: ===================== fenestration
@@ -4147,25 +4184,44 @@ fprintf('[READY !]\n');
             if(recta_kind==0)% rect y=mx+q    q=y-mx            
                 m1 = (yy(2)-yy(1))/(xx(2)-xx(1));
                 q1 = yy(1) - m1*xx(1);
-                dist = abs(receiver_locations(:,2) - (m1*receiver_locations(:,1) +q1))/sqrt(1+m1^2);
+                dist = abs(receiver_locations(:,2) - (m1*receiver_locations(:,1) +q1))/sqrt(1+m1^2);% Equation 1
                 r_distance_from_profile = dist(id_farhest);
-                % r1:  y = m1 x + q1
-                % r2:  y = m2 x + q2
+                %% info
+                % r1:  y = m1 x + q1 (profile)
+                % r2:  y = m2 x + q2 (line through the receiver and perpendicular to r1)
                 %
-                % r passante per un pto e perp a retta data (y=m1 x +q):
+                % rect given endpoints
+                % r1 = m1 x + q1:    (ax +by +c = 0)
+                %     a = y2-y1
+                %     b = x2-x1
+                %     c = x2 y1 - y2 x1
+                %     m1 = -a/b = -(y2-y1)/(x2-x1) 
+                %     q1  = y1 -m1 x1
+                %
+                % distance of point p (receiver) from the rect r1 (the profile). (Equation 1)
+                % dist = |yp - m1 xp -q1 | / sqrt(1 + m1^1)
+                %
+                % rect (r2) through a point p and perpendicular to r1 (y=m1 x +q1):
                 % y = m2 xp + q2
                 % m2  = -1/m1
-                % q2 = yp - m2 xp == yp +xp/m1  (A)
+                % q2 = yp - m2 xp == yp +xp/m1  (Equation 2)
                 %
-                % pto di intersezione di due rette
-                %  x = -(q1-q2)/(m1-m2)
-                %  y = -m1 (q1-q2)/(m1-m2) +q1
+                % point of intersection of two rects
+                % [ y = m2 x + q2
+                % [ y = m1 x + q1
                 %
+                % [ y = m2 x + q2
+                % [ m2 x + q2 = m1 x + q1 -> x(m2-m1) = (q1-q2)
+                %
+                % [ y = m2 (q1-q2)/(m2-m1)+ q2
+                % [ x = (q1-q2)/(m2-m1) 
+                %%
                 m2 = -1/m1;
-                q2 = receiver_locations(:,2) + receiver_locations(:,1)/m1;%  (A)
-                xp = (q2-q1)/(m1-m2);
-                yp = (m1*(q2-q1)/(m1-m2)+q1);
-                drs= sqrt( (xx(1)-xp).^2 + (yy(1)-yp).^2 );
+                q2 = receiver_locations(:,2) + receiver_locations(:,1)/m1;%  (Equation 2)
+                xp = (q1-q2)/(m2-m1);%             Point of intersection
+                yp = m2*(q1-q2)/(m2-m1)+q2;% Point of intersection 
+                drs= sqrt( (xx(1)-xp).^2 + (yy(1)-yp).^2 );% distances from beginning of profile
+                %
                 for ii = 1:Np
                     far = dist(ii);
                     dr  = drs(ii);
@@ -4175,8 +4231,10 @@ fprintf('[READY !]\n');
 
                     if( dist(ii) <= r_distance_from_profile)
                         found_ids=found_ids+1;
-                        dummy_ids(found_ids,1:3) = [ii, dr, far];
-                        %dummy_ids = [dummy_ids; [ii, dr, far]];
+                        dummy_ids(found_ids,1:3) = [ii, dr, far];% [station-ID][distance from profile beginning][distance from profile]
+                        % val = station-ID
+                        % dr  = distance (along profile) from profile beginning
+                        % far = distance from profile
                         dummy_onoff(ii) = 1;
                     end
                 end
@@ -5324,10 +5382,25 @@ fprintf('[READY !]\n');
                 %                 text(hhdl, XY(P.isshown.id,1),XY(P.isshown.id,2), ...
                 %                     strcat('F0[',num2str(Main_peaks(P.isshown.id,1)),']'));
                 set(T1_PA_FileID,'string',num2str(P.isshown.id));
-                set(T1_PC_datafile_txt,'String',SURVEYS{P.isshown.id,2});
-                set(T2_PB_datafile_txt,'String',SURVEYS{P.isshown.id,2});
-                set(T3_PB_datafile_txt,'String',SURVEYS{P.isshown.id,2});
-                set(T6_PB_datafile_txt,'String',SURVEYS{P.isshown.id,2});
+                set(T1_PC_datafile_txt,'String',strcat('ID',num2str(P.isshown.id),': ',SURVEYS{P.isshown.id,2}));
+                set(T2_PB_datafile_txt,'String',strcat('ID',num2str(P.isshown.id),': ',SURVEYS{P.isshown.id,2}));
+                set(T3_PB_datafile_txt,'String',strcat('ID',num2str(P.isshown.id),': ',SURVEYS{P.isshown.id,2}));
+                set(T6_PB_datafile_txt,'String',strcat('ID',num2str(P.isshown.id),': ',SURVEYS{P.isshown.id,2}));
+                %
+                switch(DTB__status(P.isshown.id,1))
+                    case 0
+                        set(T2_PB_datafile_txt,'BackgroundColor','g');
+                        set(T3_PB_datafile_txt,'BackgroundColor','g');
+                        set(T6_PB_datafile_txt,'BackgroundColor','g');
+                    case 2
+                        set(T2_PB_datafile_txt,'BackgroundColor','r');
+                        set(T3_PB_datafile_txt,'BackgroundColor','r');
+                        set(T6_PB_datafile_txt,'BackgroundColor','r');
+                    case 1
+                        set(T2_PB_datafile_txt,'BackgroundColor',Status_bkground_color);
+                        set(T3_PB_datafile_txt,'BackgroundColor',Status_bkground_color);
+                        set(T6_PB_datafile_txt,'BackgroundColor',Status_bkground_color);
+                end
                 %
                 fs = sampling_frequences(P.isshown.id);
                 set(T1_PA_info_sampling_freq,'String', num2str(fs) );
@@ -5634,7 +5707,7 @@ fprintf('[READY !]\n');
                     set(T1_PA_status0,'BackgroundColor','g')
                     set(T1_PA_status ,'BackgroundColor','g')
                     %
-                    set(T1_PA_status ,'String','Loked')
+                    set(T1_PA_status ,'String','Locked')
                 case 1
                     set(T1_PA_id     ,'BackgroundColor',Status_bkground_color)
                     set(T1_PA_FileID ,'BackgroundColor',Status_bkground_color)
@@ -7938,15 +8011,19 @@ fprintf('[READY !]\n');
             return;
         end
         %   
-		set(h_fig,'CurrentAxes',h_ax);
-        set(h_ax,'Visible','off');
-        hold(h_ax,'off')
-        cla(h_ax)
+	set(h_fig,'CurrentAxes',h_ax);
+        %set(h_ax,'Visible','off');
+        %hold(h_ax,'off')
+        %cla(h_ax)
+        if strcmp( get(H.menu.view.HoldOn,'Checked'), 'off')
+            hold(h_ax,'off'); cla(h_ax);
+        end
         %%
         Fnew = P.Reference_Freq_scale.';
         Nf = length(Fnew);
         %% profile creation
         if P.profile.id==0; return; end
+        if P.profile.id>size(P.profile_ids,1); P.profile.id=size(P.profile_ids,1); end
         Nhv   = size(P.profile_ids{P.profile.id,1},1);
         if Nhv>1
             Profile_data = zeros(Nf,Nhv);
