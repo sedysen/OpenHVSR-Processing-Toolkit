@@ -27,8 +27,11 @@ gui_3D();
 % Version 2.0.0
 %       * Optimized memory and space on disk usage
 %       * Solved bug for ginput(2) in Matlab R2018a/R2018b
-
-
+% Version 2.0.1
+%       * bugfix with profiles discretization
+%       * NEW custom profile names
+%       * auto-creation of the "history.m" file
+%
 
 
 

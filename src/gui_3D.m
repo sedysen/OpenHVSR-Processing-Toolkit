@@ -46,8 +46,6 @@ Pfiles_SET_ONOFF_FEAT%          extra features
 Pfiles_IFLAGS%                  flags deciding components behavior
 DEFAULT_VALUES%                default data-processing values
 Pfiles__INTERNAL_VARIABLES%     contains private variables
-P.appversion = 'V2.0.0';
-warning('App version forcibly changed.')
 %
 %
 %% Get USER preferences
@@ -186,9 +184,6 @@ DTB__well__bedrock_depth__PAROLAI2002={};%        DTB{s,1}.well.bedrock_depth__P
 DTB__well__bedrock_depth__HINZEN2004={};%        DTB{s,1}.well.bedrock_depth__HINZEN2004 = 'n.a.';
 %% Database =====================END
 %%
-%CHANGE LOAD-ELABORATION                             FIX
-%CORRECT ISSUE FOUND IN MAIN .hvsr.hvsr....   FIX
-%
 %
 %% NEW AND TEMPORARY FEATURES xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 %%    Reference models: vp  vs  rho  h  Qp  Qs
@@ -694,7 +689,8 @@ end
 pos_axes_geo0 = [0.1 0.1 0.85 0.85];
 hAx_geo_hcmenu = uicontextmenu;
 uimenu(hAx_geo_hcmenu, 'Label', 'Define 2D profile',    'Callback', {@define_Profile});
-uimenu(hAx_geo_hcmenu, 'Label', 'Reset  2D profile',    'Callback', {@reset_Profile});
+uimenu(hAx_geo_hcmenu, 'Label', 'Discard  a profile',    'Callback', {@reset_one_Profile});
+uimenu(hAx_geo_hcmenu, 'Label', 'Discard  ALL profiles',    'Callback', {@reset_Profile});
 uimenu(hAx_geo_hcmenu, 'Label', 'Edit externally',    'Callback', {@plot_extern,1}, 'Separator','on');
 uimenu(hAx_geo_hcmenu, 'Label', 'Edit externally (profile)',    'Callback', {@plot_extern,2});
 hAx_main_geo = axes('Parent',H.PANELS{P.tab_id}.B,'Units', 'normalized','FontSize',USER_PREFERENCE_interface_objects_fontsize,'Position',pos_axes_geo0,'uicontextmenu',hAx_geo_hcmenu);
@@ -2004,9 +2000,12 @@ end
 %
 %% Publish GUI and set history
 working_folder = '';
-last_project_name = 'myproject.m';
+last_project_name = 'OpenHVSR_ProTo__project.m';
+last_elaboration_name = 'OpenHVSR_ProTo__Elaboration_main.mat';
 last_log_number= 0;
+if exist('history.m', 'file') == 2
 history
+end
 Pfunction__publish_gui(H.gui,H.menu.credits,P.appname,P.appversion);
 fprintf('[READY !]\n');
 %
@@ -2099,9 +2098,12 @@ fprintf('[READY !]\n');
             working_folder = thispath;
             last_project_name = file;
             if get(H.menu.settings.log,'UserData')==1; last_log_number=last_log_number+1; end
+            %if exist('')
+            
             fid = fopen('history.m','w');
             fprintf(fid, 'working_folder = ''%s'';\n', working_folder);
             fprintf(fid, 'last_project_name = ''%s'';\n', last_project_name);
+            fprintf(fid, 'last_elaboration_name = ''%s'';\n', last_elaboration_name);
             fprintf(fid, 'last_log_number = %d;\n', last_log_number);
             fclose(fid);
             %% logging
@@ -2637,15 +2639,26 @@ fprintf('[READY !]\n');
         end             
     end
     function Menu_Load_elaboration(~,~,~)
-        [file,thispath] = uigetfile('*.mat','Resume Elaboration',strcat(working_folder,'/Elaboration.mat'));        
+        [file,thispath] = uigetfile('*.mat','Resume Elaboration',strcat(working_folder,'/',last_elaboration_name));        
         if(file ~= 0)
             is_busy();
             %% reset
             MASTER_RESET();
-            %%
-            datname = strcat(thispath,file);
+            %% updating history
+            working_folder = thispath;
+            last_elaboration_name = file;
+            if get(H.menu.settings.log,'UserData')==1; last_log_number=last_log_number+1; end
+            %if exist('')
             
+            fid = fopen('history.m','w');
+            fprintf(fid, 'working_folder = ''%s'';\n', working_folder);
+            fprintf(fid, 'last_project_name = ''%s'';\n', last_project_name);
+            fprintf(fid, 'last_elaboration_name = ''%s'';\n', last_elaboration_name);
+            fprintf(fid, 'last_log_number = %d;\n', last_log_number);
+            fclose(fid);
+       
             %% load the store data
+            datname = strcat(thispath,file);
             BIN = load(datname, '-mat');
             if isfield(BIN,'DDAT');  DDAT= BIN.DDAT; end
             if isfield(BIN,'FDAT');  FDAT= BIN.FDAT; end
@@ -2955,25 +2968,50 @@ fprintf('[READY !]\n');
 %%      View
 %%          profile smoothing
     function Menu_profile_smoothing_strategy0_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         P.profile.smoothing_strategy = 0; spunta(H.menu.view2d_Profile_smoothing_childs, P.profile.smoothing_strategy);
         Graphics_plot_2d_profile(0);
     end
     function Menu_profile_smoothing_strategy1_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         P.profile.smoothing_strategy = 1;
         set_smoothing_radius();
         spunta(H.menu.view2d_Profile_smoothing_childs, P.profile.smoothing_strategy);
     end
     function Menu_profile_smoothing_strategy2_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         P.profile.smoothing_strategy = 2;
         set_smoothing_radius();
         spunta(H.menu.view2d_Profile_smoothing_childs, P.profile.smoothing_strategy);
     end
     function Menu_profile_smoothing_strategy3_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         P.profile.smoothing_strategy = 3;
         set_smoothing_radius();
         spunta(H.menu.view2d_Profile_smoothing_childs, P.profile.smoothing_strategy);
     end
     function set_smoothing_radius()
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         prompt = {'Smoothing Radius (0 = off)'};
         def = {num2str(P.profile.smoothing_radius)};
         answer = inputdlg(prompt,'Smoothing',1,def);
@@ -2982,27 +3020,52 @@ fprintf('[READY !]\n');
     end
 %%          profile normalization
     function Menu_profile_normalization_strategy0_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         P.profile.normalization_strategy = 0; 
         spunta(H.menu.view2d_Profile_normalization_childs, P.profile.normalization_strategy);
         Graphics_plot_2d_profile(0);
     end
     function Menu_profile_normalization_strategy1_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         P.profile.normalization_strategy = 1;
         spunta(H.menu.view2d_Profile_normalization_childs, P.profile.normalization_strategy);
         Graphics_plot_2d_profile(0);
     end
     function Menu_profile_normalization_strategy2_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         P.profile.normalization_strategy = 2;
         spunta(H.menu.view2d_Profile_normalization_childs, P.profile.normalization_strategy);
         Graphics_plot_2d_profile(0);
     end
     function Menu_profile_normalization_strategy3_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         P.profile.normalization_strategy = 3;
         spunta(H.menu.view2d_Profile_normalization_childs, P.profile.normalization_strategy);
         Graphics_plot_2d_profile(0);
     end
 %%          profile discretization 
     function Menu_profile_discretization_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         prompt = {'Choose X-discretization'};
         def = {num2str( P.profile.N_X_points )};
         answer = inputdlg(prompt,'Set N of points',1,def);
@@ -3019,6 +3082,11 @@ fprintf('[READY !]\n');
     end
 %%          prifile color limits
     function Menu_profile_ColorLimits_Callback(~,~,~)
+        if(isempty(P.profile_ids))
+            Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
+            msgbox(Message,'INFO')
+            return;
+        end
         prompt = {'Choose Color Limits',''};
         def = {num2str(P.profile.color_limits(1)), num2str(P.profile.color_limits(2))};
         answer = inputdlg(prompt,'Set color limits',1,def);
@@ -4037,12 +4105,14 @@ fprintf('[READY !]\n');
         dummy_onoff   = zeros(Np,1);% 
         lne = plot(hAx_main_geo,xx,yy,'k');
         %
-        prompt = {'Select the ID of the farthest station'};
-        def = {'0'};% {num2str(r_distance_from_profile)};
-        answer = inputdlg(prompt,'distance (m)',1,def);
+        prompt = {'Select the ID of the farthest station','Custom name'};
+        def = {'0','none'};
+        % inputdlg(prompt,title,dims,definput)
+        answer = inputdlg(prompt,'info request',[1 35],def);
         if(isempty(answer)); return; end
         %r_distance_from_profile = str2double(answer{1});
         id_farhest = str2double(answer{1});
+        profile_name = answer{2};
         if (0<id_farhest) && (id_farhest<=Np)
             % filter measurement points
             found_ids = 0;
@@ -4050,7 +4120,7 @@ fprintf('[READY !]\n');
                 recta_kind = 1;
                 r_distance_from_profile = abs(receiver_locations(id_farhest,1)-xx(1));
                 for ii = 1:Np
-                    if( abs(receiver_locations(ii,1)-xx(1)) < r_distance_from_profile)
+                    if( abs(receiver_locations(ii,1)-xx(1)) <= r_distance_from_profile)
                         dr = receiver_locations(ii,2)-yy(1);
                         far = abs(receiver_locations(ii,1)-xx(1));
                         found_ids=found_ids+1;
@@ -4064,7 +4134,7 @@ fprintf('[READY !]\n');
                 r_distance_from_profile = abs(receiver_locations(id_farhest,2)-yy(1));
                 for ii = 1:Np
                     recta_kind = 2;
-                    if( abs(receiver_locations(ii,2)-yy(1)) < r_distance_from_profile)
+                    if( abs(receiver_locations(ii,2)-yy(1)) <= r_distance_from_profile)
                         dr = receiver_locations(ii,1)-xx(1);
                         far = abs(receiver_locations(ii,2)-yy(1));
                         found_ids=found_ids+1;
@@ -4103,7 +4173,7 @@ fprintf('[READY !]\n');
                         dr = -dr;
                     end
 
-                    if( dist(ii) < r_distance_from_profile)
+                    if( dist(ii) <= r_distance_from_profile)
                         found_ids=found_ids+1;
                         dummy_ids(found_ids,1:3) = [ii, dr, far];
                         %dummy_ids = [dummy_ids; [ii, dr, far]];
@@ -4126,6 +4196,7 @@ fprintf('[READY !]\n');
                     P.profile_ids{pid,1}   = sortedmat;
                     P.profile_line{pid,1}  = dummy_line;
                     P.profile_onoff{pid,1} = dummy_onoff;
+                    P.profile_name{pid,1} = profile_name;
                     %
                     Update_survey_locations(hAx_main_geo);
                     Update_survey_locations(hAx_geo1);
@@ -4138,8 +4209,54 @@ fprintf('[READY !]\n');
     end
     function reset_Profile(~,~,~)
         if isempty(SURVEYS); return; end
-        P.profile_line = [];
-        P.profile_ids  = [];
+        P.profile_line = {};
+        P.profile_ids  = {};
+        P.profile_onoff = {};
+        P.profile_name={};
+        %  
+        Update_survey_locations(hAx_main_geo);
+        Update_survey_locations(hAx_geo1);
+        Update_survey_locations(hAx_geo2);
+        Update_survey_locations(hAx_geo3);
+    end
+    function reset_one_Profile(~,~,~)
+        if isempty(SURVEYS); return; end
+        if isempty(P.profile_ids); return; end
+        if size(P.profile_ids,1)<2
+            P.profile_line = {};
+            P.profile_ids  = {};
+            P.profile_onoff = {};
+            P.profile_name={};
+        else
+
+            prompt = {'Select the ID of the profile to discard'};
+            def = {'0'};% {num2str(r_distance_from_profile)};
+            answer = inputdlg(prompt,'ID?',1,def);
+            if(isempty(answer)); return; end
+            p_id = str2double(answer{1});
+            if p_id > size(P.profile_ids,1); return; end
+            if p_id <1; return; end
+
+            Nprf = size(P.profile_ids,1);
+            temp_line = P.profile_line;
+            temp_ids = P.profile_ids;
+            temp_onoff  = P.profile_onoff;
+            temp_name = P.profile_name;
+
+            P.profile_line = cell(Nprf-1,1);
+            P.profile_ids = cell(Nprf-1,1);    
+            P.profile_onoff = cell(Nprf-1,1);
+            P.profile_name = cell(Nprf-1,1);
+            nowid = 0;
+            for ipid = 1:Nprf 
+                if ipid == p_id; continue; end
+                nowid = nowid + 1;
+                P.profile_line{nowid,1} = temp_line{ipid,1};
+                P.profile_ids{nowid,1}  = temp_ids{ipid,1};  
+                P.profile_onoff{nowid,1} = temp_onoff{ipid,1};
+                P.profile_name{nowid,1}  = temp_name{ipid,1}; 
+            end
+        end
         %  
         Update_survey_locations(hAx_main_geo);
         Update_survey_locations(hAx_geo1);
@@ -4298,6 +4415,7 @@ fprintf('[READY !]\n');
             msgbox(Message,'INFO')
             return;
         end
+        if P.profile.id==0; P.profile.id=1; end
         %
         %P.property_23d_to_show = parameter_id;
         % PROFILE
@@ -4306,8 +4424,12 @@ fprintf('[READY !]\n');
         % property ID = 3:     N-VSR
         P.Flags.View_2D_current_mode = 'profile';
         P.Flags.View_2D_current_submode = parameter_id;
-        Graphics_plot_2d_profile(0);% H.gui,  hAx_2DViews, P.Flags.View_2D_current_submode);
-        set(h_shown_prof,'String',['prof. ',num2str(P.profile.id)])
+        Graphics_plot_2d_profile(0);
+        if strcmp(P.profile_name{P.profile.id,1},'none')
+            set(h_shown_prof,'String',['prof. ',num2str(P.profile.id)])   
+        else
+            set(h_shown_prof,'String',strcat('(',num2str(P.profile.id),') ',P.profile_name{P.profile.id,1})) 
+        end
     end
     function CB_hAx_profile_DOWN(~,~,~)
         if isempty(SURVEYS); return; end  
@@ -4325,9 +4447,15 @@ fprintf('[READY !]\n');
             otherwise; val = val -1;
         end
         P.profile.id = val;
+        
         set(h_shown_prof,'String','wait...')
-        Graphics_plot_2d_profile(0)% H.gui,  hAx_2DViews, P.Flags.View_2D_current_submode);
-        set(h_shown_prof,'String',['prof. ',num2str(P.profile.id)])
+        P.Flags.View_2D_current_mode = 'profile';
+        Graphics_plot_2d_profile(0)
+        if strcmp(P.profile_name{P.profile.id,1},'none')
+            set(h_shown_prof,'String',['prof. ',num2str(P.profile.id)])   
+        else
+            set(h_shown_prof,'String',strcat('(',num2str(P.profile.id),') ',P.profile_name{P.profile.id,1})) 
+        end
     end
     function CB_hAx_profile_UP(~,~,~)
         if isempty(SURVEYS); return; end
@@ -4346,8 +4474,13 @@ fprintf('[READY !]\n');
         end
         P.profile.id = val;
         set(h_shown_prof,'String','wait...')
-        Graphics_plot_2d_profile(0)% H.gui,  hAx_2DViews, P.Flags.View_2D_current_submode);
-        set(h_shown_prof,'String',['prof. ',num2str(P.profile.id)])
+        P.Flags.View_2D_current_mode = 'profile';
+        Graphics_plot_2d_profile(0)
+        if strcmp(P.profile_name{P.profile.id,1},'none')
+            set(h_shown_prof,'String',['prof. ',num2str(P.profile.id)])   
+        else
+            set(h_shown_prof,'String',strcat('(',num2str(P.profile.id),') ',P.profile_name{P.profile.id,1})) 
+        end
     end
     function CB_hAx_profile_GOTO(~,~,~)
         if isempty(SURVEYS); return; end
@@ -4367,8 +4500,13 @@ fprintf('[READY !]\n');
             if 1<=val && val<= Ndat
                 P.profile.id = val;
                 set(h_shown_prof,'String','wait...')
-                Graphics_plot_2d_profile(0)% H.gui,  hAx_2DViews, P.Flags.View_2D_current_submode);
-                set(h_shown_prof,'String',['prof. ',num2str(P.profile.id)])
+                P.Flags.View_2D_current_mode = 'profile';
+                Graphics_plot_2d_profile(0)               
+                if strcmp(P.profile_name{P.profile.id,1},'none')
+                    set(h_shown_prof,'String',['prof. ',num2str(P.profile.id)])   
+                else
+                    set(h_shown_prof,'String',strcat('(',num2str(P.profile.id),') ',P.profile_name{P.profile.id,1})) 
+                end
             end
         end
     end
@@ -4505,7 +4643,7 @@ fprintf('[READY !]\n');
     end
     function CB_view3d_surfaces_discretization(~,~,~)
         prompt = {'X','Y'};
-        def = {num2str(P.TAB_view2d_Discretization(1)), num2str(P.TAB_view2d_Discretization(2))};
+        def = {num2str(P.TAB_view3d_Discretization(1)), num2str(P.TAB_view3d_Discretization(2))};
         answer = inputdlg(prompt,'Set discretization',1,def);
         if(~isempty(answer))
             A = str2double(answer{1});
@@ -4516,9 +4654,8 @@ fprintf('[READY !]\n');
             if B>9
                 P.TAB_view3d_Discretization(2) = B;
             end
+            plots_3D_update();
         end
-       %Graphics_v_plot_depths(0);
-       update graphics here
     end
     %
     function CB_hAx_geo_back_Vf(~,~,~)
@@ -5253,8 +5390,14 @@ fprintf('[READY !]\n');
         %% subset profile
         if(~isempty(P.profile_line))
             for ii=1:size(P.profile_line,1)
-                plot(hhdl, P.profile_line{ii,1}(:,1), P.profile_line{ii,1}(:,2),'r','linewidth',2); hold(hhdl,'on')
-                text(P.profile_line{ii,1}(end,1), P.profile_line{ii,1}(end,2),strcat('Prof.',num2str(ii))); hold(hhdl,'on')
+                if(~isempty(P.profile_line{ii,1}))
+                    plot(hhdl, P.profile_line{ii,1}(:,1), P.profile_line{ii,1}(:,2),'r','linewidth',2); hold(hhdl,'on')
+                    if strcmp(P.profile_name{ii,1},'none')
+                        text(P.profile_line{ii,1}(end,1), P.profile_line{ii,1}(end,2),strcat('Prof.',num2str(ii))); hold(hhdl,'on')
+                    else
+                        text(P.profile_line{ii,1}(end,1), P.profile_line{ii,1}(end,2),strcat('(',num2str(ii),') ',P.profile_name{ii,1})); hold(hhdl,'on')
+                    end
+                end
             end
         end
         drawnow
@@ -5289,8 +5432,26 @@ fprintf('[READY !]\n');
             text(XY(p,1), XY(p,2), strcat(' R',num2str(p)),'HorizontalAlignment','left');
         end
         %% subset profile
-        plot(hhdl, P.profile_line{P.profile.id,1}(:,1), P.profile_line{P.profile.id,1}(:,2),'r','linewidth',2); hold(hhdl,'on')
-        text(P.profile_line{P.profile.id,1}(end,1), P.profile_line{P.profile.id,1}(end,2),strcat('Prof.',num2str(P.profile.id))); hold(hhdl,'on')
+        %plot(hhdl, P.profile_line{P.profile.id,1}(:,1), P.profile_line{P.profile.id,1}(:,2),'r','linewidth',2); hold(hhdl,'on')
+        %text(P.profile_line{P.profile.id,1}(end,1), P.profile_line{P.profile.id,1}(end,2),strcat('Prof.',num2str(P.profile.id))); hold(hhdl,'on')
+        if(~isempty(P.profile_line))
+            for ii=1:size(P.profile_line,1)
+                colr = 'k';
+                linw = 1;
+                if(~isempty(P.profile_line{ii,1}))
+                    if ii==P.profile.id
+                        colr = 'r';
+                        linw = 2;
+                    end
+                    plot(hhdl, P.profile_line{ii,1}(:,1), P.profile_line{ii,1}(:,2),colr,'linewidth',linw); hold(hhdl,'on')
+                    if strcmp(P.profile_name{ii,1},'none')
+                        text(P.profile_line{ii,1}(end,1), P.profile_line{ii,1}(end,2),strcat('Prof.',num2str(ii))); hold(hhdl,'on')
+                    else
+                        text(P.profile_line{ii,1}(end,1), P.profile_line{ii,1}(end,2),strcat('(',num2str(ii),') ',P.profile_name{ii,1})); hold(hhdl,'on')
+                    end
+                end
+            end
+        end
         drawnow
     end
 %%    various
@@ -7840,7 +8001,7 @@ fprintf('[READY !]\n');
                             Delete_columns(rr)=1;
                         end
                     end
-                    str='E/V';
+                    str='N/V';
             end
             %% Normalization
             switch P.profile.normalization_strategy
@@ -8750,7 +8911,7 @@ fprintf('[READY !]\n');
             case 1% MAIN: Survey Geometry
                 Update_survey_locations();% no argument >> new figure
             case 2% MAIN: show profile
-                Update_profile_locations()% <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< FIX : this cannot be reached
+                Update_profile_locations()
             case 3% WINDOWING: Time data + windows
                 Graphic_update_data(1);                
             case 4% COMPUTATIONS
@@ -8766,9 +8927,7 @@ fprintf('[READY !]\n');
                     case P4_TA_buttongroup_option{4} 
                         Graphics_2dView_slice_at_specific_frequence(1);   
                     case 'profile'
-                        Graphics_plot_2d_profile(1);% H.gui,  hAx_2DViews, P.Flags.View_2D_current_submode);%   ABSOLUTELY FIX !!!!! 
-%                     otherwise
-%                         S2Dview_hvsr_main_frequence();%% option-1
+                        Graphics_plot_2d_profile(1);
                 end
             case 6% 3D VIEWS
                 switch P.Flags.View_3D_current_mode%  Matlab: before 2014b
