@@ -7032,6 +7032,7 @@ fprintf('[READY !]\n');
         drawnow
     end   
     function Graphic_update_hvsr_180_windows(newfigure)%7           Directional image
+        %%
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
         is_drawing();
         ii = P.isshown.id;
@@ -7066,7 +7067,7 @@ fprintf('[READY !]\n');
         tcry =(0*tcrv + 135/maxn); 
         fpeak_user = DTB__hvsr__user_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
         fpeak_auto = DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
-        
+        %%
         switch USER_PREFERENCE_hvsr_directional_reference_system
             case 'compass'
                 angles = 90:-th:-90;
@@ -7211,6 +7212,7 @@ fprintf('[READY !]\n');
         hold(h_ax(3),'off')                        
     end
     function Graphic_update_hvsr_180_curves(newfigure)%8            Directional curves
+        %%
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
         is_drawing();
         ii = P.isshown.id;
@@ -7241,27 +7243,28 @@ fprintf('[READY !]\n');
         DD = [DD, DD(:,1)];
         mi = min(min(DD)); 
         ma = max(max(DD));
-        %
         maxn = max(DTB__hvsr__curve{P.isshown.id,1});      
         tcrv = 135*(DTB__hvsr__curve{P.isshown.id,1}./maxn);
         tcry =(0*tcrv + 135/maxn); 
         fpeak_user = DTB__hvsr__user_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
         fpeak_auto = DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1);% user selection is always preferred
-        
+        %%
          switch USER_PREFERENCE_hvsr_directional_reference_system
             case 'compass'
                 angles = 90:-th:-90;
                 angles_span = [-90,90];
                 tcrv = tcrv-90;
                 tcry = tcry-90; 
-                DD=fliplr(DD);
+                %DD=fliplr(DD);
             otherwise
                 angles = 0:th:180;
                 angles_span = [0,180];
                 % tcrv is Ok
                 % tcry is Ok
-        end
-        %% AXIS (1) PLAIN VIEW
+         end
+         
+         
+         %% AXIS (1) PLAIN VIEW
         set(hgui,'CurrentAxes',h_ax(1));
         if P.Flags.SpectrumAxisMode == 0
             surf(h_ax(1),angles,Fvec,DD,'EdgeColor','none')
