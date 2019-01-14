@@ -332,7 +332,7 @@ T1_PA_dat_bk = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'
     'String','<<', ...
     'Units','normalized','Position',[objx(1), objy(row), objw(1), objh], ...
     'Callback',{@CB_hAx_geo_back});
-uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','pushbutton','parent',H.PANELS{P.tab_id}.A, ...
+T1_PA_dat_gt = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','pushbutton','parent',H.PANELS{P.tab_id}.A, ...
     'String','go to', ...
     'Units','normalized','Position',[objx(2), objy(row), objw(2), objh], ...
     'Callback',{@CB_hAx_geo_goto});
@@ -341,8 +341,9 @@ T1_PA_dat_fw = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'
     'Units','normalized','Position',[objx(3), objy(row), objw(3), objh], ...
     'Callback',{@CB_hAx_geo_next});
 if strcmp(USER_PREFERENCE_Move_over_suggestions,'on')
-    set(T1_PA_dat_fw,'TooltipString','Next location')
-    set(T1_PA_dat_bk,'TooltipString','Previous location')
+    set(T1_PA_dat_fw,'TooltipString',sprintf('Next location\n\n(exit the profiles-visualization mode, if it is active)'))
+    set(T1_PA_dat_bk,'TooltipString',sprintf('Previous location\n\n(exit the profiles-visualization mode, if it is active)'))
+    set(T1_PA_dat_gt,'TooltipString',sprintf('Go to a custom location\n\n(exit the profiles-visualization mode, if it is active)'))
 end
 %%         info
 row = row+1;
@@ -434,10 +435,10 @@ T1_PA_prof_rem = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize
 if strcmp(USER_PREFERENCE_Move_over_suggestions,'on')
     tipstring = sprintf('Profile Creation: (on this Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on "2D views" Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
     set(T1_PA_prof_0,'TooltipString',tipstring)
-    set(T1_PA_prof_fw,'TooltipString','Next profile.\nVisualize the profile to inspect which stations are included \nand which are not.')
-    set(T1_PA_prof_bk,'TooltipString','Previous profile.\nVisualize the profile to inspect which stations are included \nand which are not.')
-    set(T1_PA_prof_add,'TooltipString','Add single location to profile')
-    set(T1_PA_prof_rem,'TooltipString','Remove single location from profile')
+    set(T1_PA_prof_fw,'TooltipString',sprintf('Next profile.\nEnter the profile investigation mode.\nVisualize the profile to inspect which stations are included\nand which are not.'))
+    set(T1_PA_prof_bk,'TooltipString',sprintf('Previous profile\nEnter the profile investigation mode.\nVisualize the profile to inspect which stations are included\nand which are not.'))
+    set(T1_PA_prof_add,'TooltipString','Add single location to the selected profile')
+    set(T1_PA_prof_rem,'TooltipString','Remove single location from the selected profile')
 end
 %
 %
@@ -1566,11 +1567,7 @@ if strcmp(USER_PREFERENCE_Move_over_suggestions,'on')
     set(T4_2D_Prf_2,'TooltipString','Show the average E/V in the profile.')
     set(T4_2D_Prf_3,'TooltipString','Show the average N/V in the profile.')
 end
-% %
-% row = row+1;
-% T4_2D_RapMetr_0 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','text','parent',H.PANELS{P.tab_id}.A, ...
-%     'String','====== Representative Metric ======', ...
-%     'Units','normalized','Position',[objx(1), objy(row), objw(1), objh]);
+%
 %
 % 
 %  
@@ -3204,6 +3201,7 @@ fprintf('[READY !]\n');
         Update_survey_locations(hAx_geo3);
         Graphic_update_data(0);
         Graphic_update_spectrums(0);
+        P.profile.id=0;% back to general visualization mode
     end
     function CB_hAx_geo_next(~,~,~)
         if isempty(SURVEYS); return; end
@@ -3226,6 +3224,7 @@ fprintf('[READY !]\n');
         Update_survey_locations(hAx_geo3);
         Graphic_update_data(0);
         Graphic_update_spectrums(0);
+        P.profile.id=0;% back to general visualization mode
     end
     function CB_hAx_geo_goto(~,~,~)
         if isempty(SURVEYS); return; end
@@ -3250,6 +3249,7 @@ fprintf('[READY !]\n');
                 Graphic_update_spectrums(0);
             end
         end
+        P.profile.id=0;% back to general visualization mode
     end
     function CB_hAx_well_back(~,~,~)
         Nwll= size(WELLS,1);
@@ -3321,6 +3321,7 @@ fprintf('[READY !]\n');
     end
     %
     function CB_hAx_profile_addrec(~,~,~)
+        if P.profile.id==0; return; end
         if ~isempty(P.profile_ids)
             Ndat = size(SURVEYS,1);
             prompt = {'Select id'};
@@ -3336,22 +3337,21 @@ fprintf('[READY !]\n');
                         end
                     end
                     if ispresent==0% add the point
+                        additional = [];
                         xx    = P.profile_line{P.profile.id,1}(:,1);
-                        yy    = P.profile_line{P.profile.id,1}(:,1);
+                        yy    = P.profile_line{P.profile.id,1}(:,2);
                         recta_kind = 0;
                         if(xx(1)==xx(2)) % rect x=constant
                             recta_kind = 1;
                             dr = receiver_locations(val,2)-yy(1);
                             far = abs(receiver_locations(val,1)-xx(1));
-                            P.profile_ids{P.profile.id,1} = [P.profile_ids{P.profile.id,1}; [val, dr, far]];
-                            P.profile_onoff{P.profile.id,1}(val) = 1;
+                            additional = [val, dr, far];
                         end
                         if(yy(1)==yy(2)) % rect y=constant
                                 recta_kind = 2;
                                 dr = receiver_locations(val,1)-xx(1);
                                 far = abs(receiver_locations(val,2)-yy(1));
-                                P.profile_ids{P.profile.id,1} = [P.profile_ids{P.profile.id,1}; [val, dr, far]];
-                                P.profile_onoff{P.profile.id,1}(val) = 1;
+                                additional = [val, dr, far];
                         end
                         if(recta_kind==0) % rect y=mx+q    q=y-mx
                             m1 = (yy(2)-yy(1))/(xx(2)-xx(1));
@@ -3398,12 +3398,23 @@ fprintf('[READY !]\n');
                             if(xp < xx)
                                 dr = -dr;
                             end
-                            P.profile_ids{P.profile.id,1} = [P.profile_ids{P.profile.id,1}; [val, dr, far]];%P.profile_ids = [P.profile_ids; [id, dr, far]];
                             % val = station-ID
                             % dr  = distance (along profile) from profile beginning
                             % far = distance from profile
-                            P.profile_onoff{P.profile.id,1}(val) = 1;
+                            additional = [val, dr, far];
                         end
+                        %
+                        % check for double entries (same longitudinal distance, to be avoided)     
+                        if isempty(additional); return; end
+                        [r,~]= find(P.profile_ids{P.profile.id,1}(:,2)==additional (2));
+                        if ~isempty(r) 
+                            Message = sprintf('COULD NOT ADD STATION TO THE PROFILE\nOnce projected, the selected station overlaps with station no. %d.',P.profile_ids{P.profile.id,1}( r(1), 1)   );
+                            msgbox(Message,'INFO')
+                            return; 
+                        end
+                        % if everything is Ok
+                        P.profile_ids{P.profile.id,1} = [P.profile_ids{P.profile.id,1};  additional];
+                        P.profile_onoff{P.profile.id,1}(val) = 1;
                         %
                         dummy = P.profile_ids{P.profile.id,1};
                         [~,idx] = sort(dummy(:,2)); % sort just the first column
@@ -3422,6 +3433,7 @@ fprintf('[READY !]\n');
         end
     end
     function CB_hAx_profile_remrec(~,~,~)
+        if P.profile.id==0; return; end
         if ~isempty(P.profile_ids)
             Ndat = size(SURVEYS,1);
             prompt = {'Select id'};
@@ -4162,8 +4174,6 @@ fprintf('[READY !]\n');
                         far = abs(receiver_locations(ii,1)-xx(1));
                         found_ids=found_ids+1;
                         dummy_ids(found_ids,1:3) = [ii, dr, far];
-                        %dummy_ids = [dummy_ids; [ii, dr, far]];
-                        dummy_onoff(ii) = 1;
                     end
                 end
             end
@@ -4176,8 +4186,6 @@ fprintf('[READY !]\n');
                         far = abs(receiver_locations(ii,2)-yy(1));
                         found_ids=found_ids+1;
                         dummy_ids(found_ids,1:3) = [ii, dr, far];
-                        %dummy_ids = [dummy_ids; [ii, dr, far]];
-                        dummy_onoff(ii) = 1;
                     end
                 end
             end
@@ -4235,7 +4243,6 @@ fprintf('[READY !]\n');
                         % val = station-ID
                         % dr  = distance (along profile) from profile beginning
                         % far = distance from profile
-                        dummy_onoff(ii) = 1;
                     end
                 end
             end
@@ -4251,6 +4258,29 @@ fprintf('[READY !]\n');
                     %
                     [~,idx] = sort(dummy_ids(:,2)); % sort just the first column
                     sortedmat = dummy_ids(idx,:);   % sort the whole matrix using the sort indices
+                    %
+                    % check for double entries (same longitudinal distance, to be avoided)
+                    original_sortedmat = sortedmat;
+                    distance_checked = 0;
+                    current_line=0; 
+                    for pp=1:found_ids
+                        [r,~]= find(original_sortedmat(:,2)==original_sortedmat(pp,2));
+                        if original_sortedmat(pp,2) > distance_checked
+                            current_line = current_line+1;
+                            sortedmat( current_line, :) =  original_sortedmat(r(1),:);
+                            distance_checked = original_sortedmat(pp,2); 
+                        end
+                    end
+                    sortedmat = sortedmat(1:current_line,:);
+                    if size(sortedmat,1)~=size(original_sortedmat,1)
+                        Message = sprintf('MESSAGE: Some stations were not included in the profile\nbecause they would occupy the same location.');
+                        %waitfor(warndlg(Message,'INFO'));
+                        fprintf('%s\n',Message);
+                    end
+                    % set which surveys are included
+                    dummy_onoff(sortedmat(:,1)) = 1; 
+                    %
+                    %
                     P.profile_ids{pid,1}   = sortedmat;
                     P.profile_line{pid,1}  = dummy_line;
                     P.profile_onoff{pid,1} = dummy_onoff;
@@ -5338,13 +5368,12 @@ fprintf('[READY !]\n');
                 set(H.gui,'CurrentAxes',hhdl);
                 hold(hhdl,'off')
                 cla(hhdl)
-                
             end
         else
             figure('name','Survey geometry');
             hhdl  = gca; 
         end
-        
+        axes(hhdl)
         hold(hhdl,'on')
         %  
         Nhv = size(SURVEYS,1);
@@ -7032,7 +7061,6 @@ fprintf('[READY !]\n');
         drawnow
     end   
     function Graphic_update_hvsr_180_windows(newfigure)%7           Directional image
-        %%
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
         is_drawing();
         ii = P.isshown.id;
@@ -7243,6 +7271,7 @@ fprintf('[READY !]\n');
         DD = [DD, DD(:,1)];
         mi = min(min(DD)); 
         ma = max(max(DD));
+        %
         maxn = max(DTB__hvsr__curve{P.isshown.id,1});      
         tcrv = 135*(DTB__hvsr__curve{P.isshown.id,1}./maxn);
         tcry =(0*tcrv + 135/maxn); 
@@ -7255,16 +7284,14 @@ fprintf('[READY !]\n');
                 angles_span = [-90,90];
                 tcrv = tcrv-90;
                 tcry = tcry-90; 
-                %DD=fliplr(DD);
+                DD=fliplr(DD);
             otherwise
                 angles = 0:th:180;
                 angles_span = [0,180];
                 % tcrv is Ok
                 % tcry is Ok
-         end
-         
-         
-         %% AXIS (1) PLAIN VIEW
+        end
+        %% AXIS (1) PLAIN VIEW
         set(hgui,'CurrentAxes',h_ax(1));
         if P.Flags.SpectrumAxisMode == 0
             surf(h_ax(1),angles,Fvec,DD,'EdgeColor','none')
@@ -8985,8 +9012,6 @@ fprintf('[READY !]\n');
 %%    plot externally
     function plot_extern(~,~,idx)
         if isempty(SURVEYS); return; end
-%         hxten = figure;
-%         hAxs= axes('Parent',hxten,'Units', 'normalized','Units','normalized','FontSize',USER_PREFERENCE_interface_objects_fontsize,'Position', [0.1 0.1 0.85 0.85]);
         switch(idx)
             case 1% MAIN: Survey Geometry
                 Update_survey_locations();% no argument >> new figure

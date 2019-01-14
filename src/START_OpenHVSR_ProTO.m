@@ -31,6 +31,7 @@ gui_3D();
 %       * bugfix with profiles discretization
 %       * NEW custom profile names
 %       * auto-creation of the "history.m" file
+%       * [2019-01-13] bugfix, overlap of station locations once projected on the profile 
 %
 
 
