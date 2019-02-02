@@ -32,7 +32,11 @@ gui_3D();
 %       * NEW custom profile names
 %       * auto-creation of the "history.m" file
 %       * [2019-01-13] bugfix, overlap of station locations once projected on the profile 
-%
+%       * [2019-01-30] bugfix, solved the issue with save elaboration function for large projects     
+
+
+
+
 
 
 

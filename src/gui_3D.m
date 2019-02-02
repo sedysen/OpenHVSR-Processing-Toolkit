@@ -2400,21 +2400,22 @@ fprintf('[READY !]\n');
 %             fprintf('[Elaboration saved]\n')
 %         end
 %% ================================ 
-%% =========================== V2.0.0 
+%% =========================== V2.0.0 - V2.1.0 
         if(file ~= 0)
             is_busy();
             name = file(1:end-4);
             %%   MAIN
             datname = strcat(thispath,name,'_MAIN.mat');
             appname = P.appname;
-            save_version = 2;
+            % save_version = 2;% 181111: version with one full DDAT FDAT
+            save_version = 3;% 190131: version with split DDAT FDAT
             save(datname, ...
                 'appname', ... %181111  just to check the correct data is loaded
                 'save_version', ...%181111 discern which load function to run
                 'file', ...
                 'thispath', ...
-                'DDAT', ...
-                'FDAT', ...
+                ...% 'DDAT', ... 190131:  DDAT FDAT are now split
+                ...% 'FDAT', ... 190131:  DDAT FDAT are now split
                 'Matlab_Release', ...
                 'Matlab_Release_num', ...
                 'SURVEYS', ...
@@ -2431,7 +2432,7 @@ fprintf('[READY !]\n');
             
             NN = size(SURVEYS,1);
             sNN = num2str(NN);
-            for ii=1:NN
+            for ii=1:NN% store database
                 fprintf('Save %d/%d',ii,NN) 
                 datname = strcat(thispath,name,'_database_',num2str(ii),'of',sNN,'.mat');
                 %% COPY 
@@ -2634,6 +2635,25 @@ fprintf('[READY !]\n');
                 
                 fprintf('..OK\n')
             end
+            for ii=1:NN% store data
+                fprintf('Store data %d/%d..',ii,NN)
+                datname = strcat(thispath,name,'_data_',num2str(ii),'of',sNN,'.mat');
+                iDDAT1 = DDAT{ii,1};
+                iDDAT2 = DDAT{ii,2};
+                iDDAT3 = DDAT{ii,3};
+                iFDAT1 = [];
+                iFDAT2 = [];
+                iFDAT3 = [];
+                if ~isempty(FDAT)
+                    if (~isempty(FDAT{ii,1})) && (~isempty(FDAT{ii,2})) && (~isempty(FDAT{ii,3}))
+                        iFDAT1 = FDAT{ii,1};
+                        iFDAT2 = FDAT{ii,2};
+                        iFDAT3 = FDAT{ii,3};
+                    end
+                end
+                save(datname, 'iDDAT1', 'iDDAT2', 'iDDAT3',  'iFDAT1', 'iFDAT2', 'iFDAT3');
+                fprintf('OK\n')
+            end
             is_done();
             fprintf('[Elaboration saved]\n')
         end             
@@ -2659,8 +2679,19 @@ fprintf('[READY !]\n');
             %% load the store data
             datname = strcat(thispath,file);
             BIN = load(datname, '-mat');
-            if isfield(BIN,'DDAT');  DDAT= BIN.DDAT; end
-            if isfield(BIN,'FDAT');  FDAT= BIN.FDAT; end
+            if isfield(BIN,'save_version')% load split DDAT/FDAT after 190131
+                if(BIN.save_version==2)% load the data
+                    fprintf('[archive version:2 (From V2.0.0)]\n')
+                end
+                if(BIN.save_version==3)% load the data
+                    fprintf('[archive version:3 (From V2.1.0)]\n')
+                end
+            else
+                fprintf('[archive version:1 (From V1.0.0)]\n')
+            end
+            
+            if isfield(BIN,'DDAT');  DDAT= BIN.DDAT; end% not present in 'save_version'==3
+            if isfield(BIN,'FDAT');  FDAT= BIN.FDAT; end% not present in 'save_version'==3
             % NO LOAD Matlab_Release
             % NO LOAD Matlab_Release_num
             if isfield(BIN,'SURVEYS');  SURVEYS= BIN.SURVEYS; end
@@ -2680,9 +2711,25 @@ fprintf('[READY !]\n');
             name = file(1:end-9);% discard the '_MAIN.mat' part.
             NN = size(SURVEYS,1);
             sNN = num2str(NN);
+            if isfield(BIN,'save_version')% load split DDAT/FDAT after 190131
+                if(BIN.save_version==3)% load the data
+                    DDAT = cell(NN,3);
+                    FDAT = cell(NN,3);
+                    for ii=1:NN
+                        datname = strcat(thispath,name,'_data_',num2str(ii),'of',sNN,'.mat');
+                        loadeddata = load(datname);
+                        DDAT{ii,1} = loadeddata.iDDAT1; 
+                        DDAT{ii,2} = loadeddata.iDDAT2; 
+                        DDAT{ii,3} = loadeddata.iDDAT3; 
+                        FDAT{ii,1} = loadeddata.iFDAT1; 
+                        FDAT{ii,2} = loadeddata.iFDAT2; 
+                        FDAT{ii,3} = loadeddata.iFDAT3; 
+                    end
+                end
+            end
             if isfield(BIN,'save_version')
-                if( BIN.save_version==2)% load V2.0.0+  set of files
-                    fprintf('[archive version:2 (From V2.0.0)]\n')
+                if( BIN.save_version==2 || BIN.save_version==3)% save_version=2->V2.0.0    save_version=3->V2.1.0   
+                    %fprintf('[archive version:2 (From V2.0.0)]\n')
                     for ii=1:NN
                        fprintf('Loading measure %d/%d',ii,NN) 
                        datname = strcat(thispath,name,'_database_',num2str(ii),'of',sNN,'.mat');
@@ -2792,7 +2839,7 @@ fprintf('[READY !]\n');
                     end  
                 end
             else%                                      load V1.0.0 - V1.0.1  set of files
-                fprintf('[archive version:1 (From V1.0.0 of V1.0.1)]\n')
+                %fprintf('[archive version:1 (From V1.0.0 - V1.0.1)]\n')
                 for ii=1:NN
                    fprintf('Loading measure %d/%d',ii,NN) 
                    datname = strcat(thispath,name,'_database_',num2str(ii),'of',sNN,'.mat');
@@ -2925,6 +2972,36 @@ fprintf('[READY !]\n');
                    fprintf('..OK\n')
                    clear loaded
                 end
+            end
+            
+            if isempty(DDAT)
+                clc
+                fprintf('======================================\n')
+                fprintf('ERROR: Variable DDAT is empty.\n')
+                fprintf('You are attempting to load an elaboration which was uncorrectly saved.\n')
+                fprintf('Do not worry, your work can easily be recovered following the steps below.\n')
+                fprintf('   Let''s assume that the failing file you are loading is named MyElaboration_MAIN.mat\n')
+                fprintf('   located in ../../MyFolder\n')
+                fprintf('\n')
+                fprintf('  A) Verify you are using OpenHVSR Processing Toolkit version 2.1.0 or higher\n')
+                fprintf('  B) create a backup copy of ../../MyFolder  (recommended)\n')
+                fprintf(' \n')
+                fprintf('  1) delete the file MyElaboration_MAIN.mat\n')
+                fprintf('  2) load the project file (menu: Files->Load Project)\n')
+                fprintf('     originally used to create the elaboration\n')
+                fprintf('  3) save an empty elaboration (menu: Files->Save Elaboration)\n')
+                fprintf('     into a new folder. Say ../../MyRecover\n')
+                fprintf('     note: it must be saved with the same name of the elaboration we desire to recover\n')
+                fprintf('           i.e. save as: MyElaboration.mat\n')
+                fprintf('  4) copy all files containing "database" in their name, from  MyFolder to MyRecover\n')
+                fprintf('     If correct, the database files present in MyRecover will be overwritten\n')
+                fprintf(' \n')
+                fprintf('If these guidelines are not sufficient, please do not hesitate to contact me\n')
+                fprintf('at the following email: sedysen@gmail.com\n')
+                fprintf(' \n')
+                error('For safety, the program is terminated at this point and will need restart.\n')
+                close(H.gui);
+                return
             end
             fprintf('[Elaboration loaded correctly]\n')
             %% ========================================================================
