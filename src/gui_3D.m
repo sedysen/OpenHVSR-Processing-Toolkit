@@ -183,6 +183,9 @@ DTB__well__bedrock_depth__IBS1999={};%       DTB{s,1}.well.bedrock_depth__IBS199
 DTB__well__bedrock_depth__PAROLAI2002={};%        DTB{s,1}.well.bedrock_depth__PAROLAI2002= 'n.a.';
 DTB__well__bedrock_depth__HINZEN2004={};%        DTB{s,1}.well.bedrock_depth__HINZEN2004 = 'n.a.';
 %% Database =====================END
+%% Temporary Parameters and variables
+%amplitude_minimum_difference_perc = 15;
+P.profile_name={};
 %%
 %
 %% NEW AND TEMPORARY FEATURES xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -1232,8 +1235,8 @@ P3_TA_buttongroup_option{4} = 'contour';% 3
 P3_TA_buttongroup_option{5} = 'mean';%    4 hvsr(mode a)
 P3_TA_buttongroup_option{6} = 'H-V';%     5 hvsr(mode b)
 P3_TA_buttongroup_option{7} = 'all';%     6 hvsr(mode c)
-P3_TA_buttongroup_option{8} = 'image';%   7 Diirectional (image)
-P3_TA_buttongroup_option{9} = 'curves';%  8 Diirectional (curves)
+P3_TA_buttongroup_option{8} = 'image';%   7 Directional (image)
+P3_TA_buttongroup_option{9} = 'curves';%  8 Directional (curves)
 %%            Spectrums
 objw = [0.4 0.3 0.3];
 objx = [0   0.4 0.7];
@@ -2409,6 +2412,13 @@ fprintf('[READY !]\n');
             appname = P.appname;
             % save_version = 2;% 181111: version with one full DDAT FDAT
             save_version = 3;% 190131: version with split DDAT FDAT
+            
+            iprofile = P.profile;
+            iprofile_ids = P.profile_ids;
+            iprofile_line = P.profile_line;
+            iprofile_onoff = P.profile_onoff;
+            iprofile_name = P.profile_name;
+            
             save(datname, ...
                 'appname', ... %181111  just to check the correct data is loaded
                 'save_version', ...%181111 discern which load function to run
@@ -2428,7 +2438,12 @@ fprintf('[READY !]\n');
                 'reference_system', ...
                 'sampling_frequences', ...
                 ...% 'survey_boundingboox', ...
-                'working_folder');
+                'working_folder', ...
+                'iprofile', ...
+                'iprofile_ids', ...
+                'iprofile_line', ...
+                'iprofile_onoff', ...
+                'iprofile_name');
             
             NN = size(SURVEYS,1);
             sNN = num2str(NN);
@@ -2705,6 +2720,12 @@ fprintf('[READY !]\n');
             if isfield(BIN,'sampling_frequences');  sampling_frequences= BIN.sampling_frequences; end
             % if isfield(BIN,'survey_boundingboox');  survey_boundingboox= BIN.survey_boundingboox; end
             if isfield(BIN,'working_folder');  working_folder = BIN.working_folder; end
+            %
+            if isfield(BIN,'iprofile');  P.profile = BIN.iprofile; end% 190212
+            if isfield(BIN,'iprofile_ids');  P.profile_ids = BIN.iprofile_ids; end% 190212
+            if isfield(BIN,'iprofile_line');  P.profile_line = BIN.iprofile_line; end% 190212
+            if isfield(BIN,'iprofile_onoff');  P.profile_onoff = BIN.iprofile_onoff; end% 190212
+            if isfield(BIN, 'iprofile_name');  P.profile_name = BIN.iprofile_name; end% 190212
             
             %% Load the database
             INIT_DATA_RELATED();
@@ -4220,7 +4241,7 @@ fprintf('[READY !]\n');
         if isempty(SURVEYS); return; end
         Np = size(receiver_locations,1);
         recta_kind = 0;
-        if Matlab_Release_num>2018% Solve ginput issuewith R2018a and above
+        if Matlab_Release_num>2017.1% Solve ginput issuewith R2017b and above
             [xx,yy] = sam2018b_ginput(2, hAx_main_geo);
         else
             [xx,yy] = ginput(2, hAx_main_geo);
@@ -5462,9 +5483,14 @@ fprintf('[READY !]\n');
         for ri = 1:Nwl; XYw(ri,1:2) = WELLS{ri,2}(1:2); end
         %% plot measuremet locations
         for p = 1:Nhv% show
-            plot(XY(p,1), XY(p,2), 'marker','o','Color','k','markerfacecolor','k','markersize',8);
+            colr = 'k';
+            strg = strcat(' R',num2str(p));
+            if DTB__status(p,1) == 2% if locked, is grayed out
+                colr = 0.7*[1 1 1];
+            end    
+            plot(XY(p,1), XY(p,2), 'marker','o','Color',colr,'markerfacecolor',colr,'markersize',8);
             hold(hhdl,'on')
-            text(XY(p,1), XY(p,2), strcat(' R',num2str(p)),'HorizontalAlignment','left');
+            text(XY(p,1), XY(p,2), strg,'HorizontalAlignment','left');
         end
         %
         %% plot wells
@@ -7010,7 +7036,7 @@ fprintf('[READY !]\n');
             cla(h_ax(3));
         end
 
-        Nwin = DTB__windows__number(1,1);
+        Nwin = DTB__windows__number(P.isshown.id,1);
         colrs = Pfunctions__get_rgb_colors(Nwin);% windows-colors
         %% Curves in AXIS (1)
         set(hgui,'CurrentAxes',h_ax(1));
@@ -7199,7 +7225,7 @@ fprintf('[READY !]\n');
         plot(h_ax(1),tcrv,Fvec,'w','linewidth',2)
         plot(h_ax(1),tcry,Fvec,'w','linewidth',1)
         %
-         if experimental_directionality==1
+        if experimental_directionality==1
             prd = DTB__hvsr180__preferred_direction{P.isshown.id,1};%  expressed in E=0 N=90
             if(strcmp(USER_PREFERENCE_hvsr_directional_reference_system,'compass'))
                 % transform from theta in [E=0 N=90 W=180] to theta2 in [W=-90 N=0 E=90]:  theta2 = 90-theta  
@@ -7586,7 +7612,6 @@ fprintf('[READY !]\n');
                 if ~isempty(TOPOGRAPHY)
                     plot(h_ax,TOPOGRAPHY(:,1),TOPOGRAPHY(:,2),'diamond','Color','y','MarkerFaceColor','y');
                 end
-    %             end
             end
             %% XLIM
             Xlm = Xscatt; 
@@ -7784,6 +7809,7 @@ fprintf('[READY !]\n');
         active_stations = zeros(Ndata,1);
         %
         Ampl   = zeros(Ndata,1);
+        Ampl_ave   = zeros(Ndata,1);% average amplitude (f)  (at peak)
         DirectionalPeakValues = cell(Ndata,1);
         Grads = zeros(Ndata,1);
         Grads_span = zeros(Ndata,2);
@@ -7804,7 +7830,9 @@ fprintf('[READY !]\n');
                     PeakId = DTB__hvsr__auto_main_peak_id_in_section(n,1);
                     PeakFr = DTB__hvsr__auto_main_peak_frequence(n,1);% 20180719
                 end
-                Ampl(d)= DTB__hvsr180__preferred_direction{n,1}(PeakId,2);
+                Ampl(d)= 100*DTB__hvsr180__preferred_direction{n,1}(PeakId,2)/DTB__hvsr180__preferred_direction{n,1}(PeakId,10);% 100*abs(amplimax-aver)/aver (percentual difference)
+                Ampl_ave(d)=DTB__hvsr180__preferred_direction{n,1}(PeakId,10);
+                % Ampl(d) is equivalent to: weight =  100*abs(prd(ff,3)-prd(ff,10))/prd(ff,10); % percent difference of maximum and average
                 %
                 % main peak
                 DirectionalPeakValues{d,1} = DTB__hvsr180__spectralratio{n,1}(PeakId, :);
@@ -7820,8 +7848,8 @@ fprintf('[READY !]\n');
                 if ddf >0
                     offseti = DTB__section__Frequency_Vector{n,1}(1);
                     odf = DTB__section__Frequency_Vector{n,1}(3); 
-                    ni1 = ceil( (PeakFr*(1-ddf/100))/odf )   -offseti ;%               20180719
-                    ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%               20180719
+                    ni1 = ceil( (PeakFr*(1-ddf/100))/odf ) -offseti ;%   20180719
+                    ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%   20180719
                     istr = ni1; if istr<1; istr=1; end
                     istp = ni2; if istp>size(DTB__hvsr180__preferred_direction{n,1},1); istp=PeakId; end
                     %
@@ -7861,15 +7889,14 @@ fprintf('[READY !]\n');
                     %n = active_stations(d);
                     mim = min(Df_Grads{d,1});
                     [~,imim]= find(Df_Grads{d,1}==mim);
-                    Ami = min(Df_Ampl{d,1}(imim,1));
+                    Ami = abs(min(Df_Ampl{d,1}(imim,1)) - Ampl_ave(d))/Ampl_ave(d);
                     %
                     mam = max(Df_Grads{d,1});
                     [~,imam]= find(Df_Grads{d,1}==mam);
-                    Ama = max(Df_Ampl{d,1}(imam,1));
+                    Ama = abs(max(Df_Ampl{d,1}(imam,1))-Ampl_ave(d))/Ampl_ave(d);
                     %
                     mem = (mim+mam)/2;
                     df_rad = [mim; mem; mam]*pi/180;%   rr=gg*pi/180
-                    
                     Ame = (Ama+Ami)/2;
                     df_xproj = cos(df_rad);
                     df_yproj = sin(df_rad);
@@ -8100,7 +8127,7 @@ fprintf('[READY !]\n');
         end
         is_done();
     end
-    function Graphics_plot_2d_profile(newfigure)%figure_handle, axes_handle, quantity)
+    function Graphics_plot_2d_profile(newfigure)
         is_drawing();
         quantity = P.Flags.View_2D_current_submode;
         if(newfigure)
@@ -8278,6 +8305,9 @@ fprintf('[READY !]\n');
 %%    plot: 3-D
     function Graphics_3dView_quiver(newfigure, mode)      
         if isempty(SURVEYS); return; end
+%         enforce_min_amplitude_diff_hreshold_for_reliable_directionality = 1;
+%         aag = str2double( get(h_bkdots_damplitude,'String') );% bound on amplitude. Below this value is not considered;  190120 x Caputo        
+        
         is_drawing();
         status = 0;
         for ss=1:size(SURVEYS,1)
@@ -8322,9 +8352,11 @@ fprintf('[READY !]\n');
         Ndata = size(SURVEYS,1);
         ddf =str2double( get(h_deltafmainpeak3D,'string') )/2;
         if Ndata>0
-            surface_locations = zeros(Ndata,3);
             scalearrows = str2double( get(T5_arrow_scale,'string') );%scale arrows as percent/100 of maximum size
-            %active_station_bools = zeros(Ndata,1);
+            %surface_locations = zeros(Ndata,3);
+            Xscatt = zeros(Ndata,1);
+            Yscatt = zeros(Ndata,1);
+            Zscatt = zeros(Ndata,1);
             active_station_ids = ones(Ndata,1);
             %% modes
             if mode==1% Z=-1/frequency, embedded surface
@@ -8394,58 +8426,77 @@ fprintf('[READY !]\n');
                 DirectionalPeakValues = cell(Ndata,1);
                 MaindirectionId = zeros(Ndata,1);
                 Grads = zeros(Ndata,1);
-                processed_ids = zeros(Ndata,1);
-                dd = 0;
-                pd = 0;
-                Df_Grads = {Ndata,1};
-                Df_Ampl = {Ndata,1};
+                processed_ids = zeros(Ndata,1);% id's of locations for which processing was fully performed               
+                pd = 0;% count processed locations
+                Ampl        = zeros(Ndata,1);% 100*(maxamplitude(f)-average(f))/average  (at peak)
+                Ampl_ave = zeros(Ndata,1);% average amplitude (f)  (at peak)
+                Df_Grads = cell(Ndata,1);
+                Df_Ampl = cell(Ndata,1);
                 clc
-                for d = 1:Ndata
-                    if DTB__status(d,1)~=2
-                        if ~isempty(DTB__hvsr180__spectralratio{d,1})
-                            if isnan(DTB__hvsr__auto_main_peak_amplitude(d,1)) && isnan(DTB__hvsr__user_main_peak_amplitude(d,1))
-                                continue;
-                            end
+                d = 0;% count active locations
+                for n = 1:Ndata
+                    if (DTB__status(n,1) ~= 2) && (DTB__hvsr180__angle_id(n,1)>1)
+                        if ~isempty(DTB__hvsr180__spectralratio{n,1})
+                            if isnan(DTB__hvsr__auto_main_peak_amplitude(n,1)) && isnan(DTB__hvsr__user_main_peak_amplitude(n,1)); continue; end
+                            d = d+1;
+                            Xscatt(d) = SURVEYS{n,1}(1);
+                            Yscatt(d) = SURVEYS{n,1}(2);
+                            active_station_ids(d,1)=n;
+                            %surface_locations(d,1) = SURVEYS{n,1}(1);
+                           %surface_locations(d,2) = SURVEYS{n,1}(2);
                             %
-                            %
-                            dd = dd+1;
-                            active_station_ids(dd,1)=d;
-                            surface_locations(d,1) = SURVEYS{d,1}(1);
-                            surface_locations(d,2) = SURVEYS{d,1}(2);
-                            %
-                            if ~isnan(DTB__hvsr__user_main_peak_amplitude(d,1))
-                                PeakId = DTB__hvsr__user_main_peak_id_in_section(d,1);
-                                surface_locations(d,3) = 1/DTB__hvsr__user_main_peak_frequence(d,1);% user selection is always preferred
-                                PeakFr = DTB__hvsr__user_main_peak_frequence(d,1);% 20180719
+                            if ~isnan(DTB__hvsr__user_main_peak_amplitude(n,1))
+                                PeakId = DTB__hvsr__user_main_peak_id_in_section(n,1);
+                                %surface_locations(d,3) = 1/DTB__hvsr__user_main_peak_frequence(n,1);% user selection is always preferred
+                                Zscatt(d) = 1/DTB__hvsr__user_main_peak_frequence(n,1);% user selection is always preferred
+                                PeakFr = DTB__hvsr__user_main_peak_frequence(n,1);% 20180719
                             else
-                                PeakId = DTB__hvsr__auto_main_peak_id_in_section(d,1);
-                                surface_locations(d,3) = 1/DTB__hvsr__auto_main_peak_frequence(d,1);
-                                PeakFr = DTB__hvsr__auto_main_peak_frequence(d,1);% 20180719
+                                PeakId = DTB__hvsr__auto_main_peak_id_in_section(n,1);
+                               %surface_locations(d,3) = 1/DTB__hvsr__auto_main_peak_frequence(n,1);
+                                Zscatt(d) = 1/DTB__hvsr__auto_main_peak_frequence(n,1);
+                                PeakFr = DTB__hvsr__auto_main_peak_frequence(n,1);% 20180719
                             end
-                            DirectionalPeakValues{d,1} = DTB__hvsr180__spectralratio{d,1}(PeakId, :);
+                            Ampl(d)= 100*DTB__hvsr180__preferred_direction{n,1}(PeakId,2)/DTB__hvsr180__preferred_direction{n,1}(PeakId,10);% 100*abs(amplimax-aver)/aver (percentual difference)
+                            Ampl_ave(d)=DTB__hvsr180__preferred_direction{n,1}(PeakId,10);
+                            % Ampl(d) is equivalent to: weight =  100*abs(prd(ff,3)-prd(ff,10))/prd(ff,10); % percent difference of maximum and average
+                            %
+                            % main peak
+                            DirectionalPeakValues{d,1} = DTB__hvsr180__spectralratio{n,1}(PeakId, :);
                             [~,c] = find(DirectionalPeakValues{d}==max(DirectionalPeakValues{d}));
                             %c
-                            MaindirectionId(d)=c(1);
-                            theta = DTB__hvsr180__angle_step(d,1);
+                            MaindirectionId_i=c(1);
+                            theta = DTB__hvsr180__angle_step(n,1);
                             angles = 0:theta:(180-theta);
-                            Grads(d) = angles(MaindirectionId(d));
+                            Grads(d) = angles(MaindirectionId_i);
                             pd = pd+1;
-                            processed_ids(pd) = dd;
-                            fprintf('[%d]  angle[%d]',d,Grads(d))
+                            processed_ids(pd) = d;
+                            % fprintf('[%d]  angle[%d]',n,Grads(d))
                             %
-                            %% around main peak (to be sure that not much variability is present)
+                            % around main peak (to be sure that not much variability is present)
+                            % as of 20180719 ddf is defined as percentage
                             if ddf >0
-                                odf = DTB__section__Frequency_Vector{d,1}(3); 
-                                ni1 = ceil( (PeakFr*(1-ddf/100))/odf );%               20180719
-                                ni2 = fix(  (PeakFr*(1+ddf/100))/odf );%               20180719
+                                offseti = DTB__section__Frequency_Vector{n,1}(1);
+                                odf = DTB__section__Frequency_Vector{n,1}(3); 
+                                ni1 = ceil( (PeakFr*(1-ddf/100))/odf ) -offseti ;%   20180719
+                                ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%   20180719
                                 istr = ni1; if istr<1; istr=1; end
-                                istp = ni2; if istp>size(DTB__hvsr180__preferred_direction{d,1},1); istp=PeakId; end
-                                fprintf('   Range[%3.2f][%3.2f]',ni1*odf,ni2*odf);
-
+                                istp = ni2; if istp>size(DTB__hvsr180__preferred_direction{n,1},1); istp=PeakId; end
+                                %
+                                fprintf(' Frequency ids Min/Peak/Max  [%d   %d   %d] \n', ni1,  PeakId, ni2);
+                                %fprintf('   Range[%3.2f][%3.2f]',ni1*odf,ni2*odf);
+                                    %
                                 ids =  istr:istp;
-                                directs = DTB__hvsr180__preferred_direction{d,1}(ids,1);
+                                directs = DTB__hvsr180__preferred_direction{n,1}(ids,1);
+                                % DTB__hvsr180__preferred_direction:
+                                % 1] ccmx(1)                      index(column) of the MAXimum amplitude
+                                % 2] abs(amplimx-aver)     difference of max amplitude with respect to average
+                                % 3] amplimx                      maximum amplitude
+                                % 4] angledegmx               angle corresponding to  maximum amplitude
+                                % [5-8]... followed by corresponding variables for the minimum amplitude.
+                                % 9] frequency
+                                %10] average_amplitude
                                 Df_Grads{d,1} = angles(directs);
-                                Df_Ampl{d,1}  = DTB__hvsr180__preferred_direction{d,1}(ids,2);
+                                Df_Ampl{d,1}  = DTB__hvsr180__preferred_direction{n,1}(ids,2);
                             end 
                             fprintf('\n')
                         else
@@ -8453,12 +8504,20 @@ fprintf('[READY !]\n');
                         end
                     end
                 end
-                if dd>0
-                    processed_ids = processed_ids(1:pd,1);
-                    active_station_ids = active_station_ids(1:dd,1);
+                if d>0
+                    Xscatt = Xscatt(1:d,1);
+                    Yscatt = Yscatt(1:d,1);
+                    Ampl   = Ampl(1:d,1);
+                    Grads  = Grads(1:d,1);
+                    active_station_ids = active_station_ids(1:d,1); 
                     Nactive = size(active_station_ids,1);
-                    surface_locations = surface_locations(active_station_ids,:);
-                    plot_interpolated_surface(h_ax, surface_locations);
+                    processed_ids = processed_ids(1:pd,1);% <<<<<<
+                    %surface_locations = surface_locations(1:d,:);%surface_locations = surface_locations(active_station_ids,:);                    
+                    Ampl_ave=Ampl_ave(1:d,1);
+                    Df_Grads{d,1} = Df_Grads{1:d,1};
+                    Df_Ampl{d,1}  = Df_Ampl{1:d,1};
+                    
+                    plot_interpolated_surface(h_ax, [Xscatt,Yscatt,Zscatt]);
                     grid 'off'
                     %% directions around peak (min, max,average)
                     if ddf>0
@@ -8470,22 +8529,28 @@ fprintf('[READY !]\n');
                         df_yproj_me = zeros(Nactive,1);
                         df_yproj_ma = zeros(Nactive,1);
                         for d = 1:Nactive
-                            %d = active_stations(n);
+                            %d = active_station_ids(n);
                             mim = min(Df_Grads{d,1});
                             [~,imim]= find(Df_Grads{d,1}==mim);
-                            Ami = min(Df_Ampl{d,1}(imim,1));
+                            imim=imim(1);
+                            Ami = abs(min(Df_Ampl{d,1}(imim,1))-Ampl_ave(d))/Ampl_ave(d);
                             %
                             mam = max(Df_Grads{d,1});
                             [~,imam]= find(Df_Grads{d,1}==mam);
-                            Ama = max(Df_Ampl{d,1}(imam,1));
+                            imam=imam(1);
+                            Ama =abs(max(Df_Ampl{d,1}(imam,1))-Ampl_ave(d))/Ampl_ave(d);
                             %
                             mem = (mim+mam)/2;
                             df_rad = [mim; mem; mam]*pi/180;%   rr=gg*pi/180
-                            %[rr,imem]= find(Df_Grads{d,1}==mem);
                             Ame = (Ama+Ami)/2;
-            %                 df_xproj = Ampl(d)*sin(df_rad);%  scalearrows*Dxy  ;
-            %                 df_yproj = Ampl(d)*cos(df_rad);
-                            df_xproj = cos(df_rad);%  scalearrows*Dxy  ;
+%                             if enforce_min_amplitude_diff_hreshold_for_reliable_directionality% as a percentage 190120
+%                                 if Ampl(d)<aag% Ampl(d) is weight =100*abs(amplimax-aver)/aver; % percent difference of maximum and average
+%                                     Ami= 0;
+%                                     Ame= 0;
+%                                     Ama= 0;
+%                                 end 
+%                             end% 190120
+                            df_xproj = cos(df_rad);
                             df_yproj = sin(df_rad);
                             %
                             df_xproj_mi(d) = Ami*df_xproj(1);
@@ -8495,40 +8560,60 @@ fprintf('[READY !]\n');
                             df_yproj_mi(d) = Ami*df_yproj(1);
                             df_yproj_me(d) = Ame*df_yproj(2);
                             df_yproj_ma(d) = Ama*df_yproj(3);
-                            zproj = 0*surface_locations(:,1);
+                            Grads_span(d,1) = mim;
+                            Grads_span(d,2) = mam;
+                            %
+                            fprintf(' Angles:  Min[%3.2f]    Peak[%3.2f]    Max[%3.2f]\n',Grads_span(d,1), Grads(d), Grads_span(d,2));
                         end
-                        quiver3(h_ax, surface_locations(:,1),surface_locations(:,2),surface_locations(:,3), df_xproj_mi,df_yproj_mi, zproj, scalearrows,'g')
-                        quiver3(h_ax, surface_locations(:,1),surface_locations(:,2),surface_locations(:,3), df_xproj_me,df_yproj_me, zproj, scalearrows,'y')
-                        quiver3(h_ax, surface_locations(:,1),surface_locations(:,2),surface_locations(:,3), df_xproj_ma,df_yproj_ma, zproj, scalearrows,'r')
+                        zproj = 0*Zscatt;
+%                         quiver3(h_ax, surface_locations(:,1),surface_locations(:,2),surface_locations(:,3), df_xproj_mi,df_yproj_mi, zproj, scalearrows,'g')
+%                         quiver3(h_ax, surface_locations(:,1),surface_locations(:,2),surface_locations(:,3), df_xproj_me,df_yproj_me, zproj, scalearrows,'y')
+%                         quiver3(h_ax, surface_locations(:,1),surface_locations(:,2),surface_locations(:,3), df_xproj_ma,df_yproj_ma, zproj, scalearrows,'r')
+                        quiver3(h_ax, Xscatt,Yscatt,Zscatt,   df_xproj_mi,df_yproj_mi,   zproj, scalearrows,'g')
+                        quiver3(h_ax, Xscatt,Yscatt,Zscatt,   df_xproj_me,df_yproj_me, zproj, scalearrows,'y')
+                        quiver3(h_ax, Xscatt,Yscatt,Zscatt,   df_xproj_ma,df_yproj_ma, zproj, scalearrows,'r')
                     end
                     %
                     %% PLOT
-                    %% measure points plot
-                    for d = 1:length(active_station_ids)
-                        hvid = active_station_ids(d);
-                        if ~isempty(DTB__hvsr180__spectralratio{hvid,1})
-                            if ~isnan(DTB__hvsr__user_main_peak_amplitude(hvid,1))
-                                plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'o','Color','y','MarkerFaceColor','y');% user selected
-                            else
-                                plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'o','Color','r','MarkerFaceColor','r');% auto-selected
-                            end
-                            hold(h_ax,'on')
-                        else
-                            plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'o');% MISSING
-                            plot3(h_ax,surface_locations(d,1),surface_locations(d,2),surface_locations(d,3),'x');% MISSING
-                        end
-                        hold(h_ax,'on')
-                    end
+                    %% main direction (at peak)
                     %arrowmaxlength = scalearrows*max([ ,  ]);
                     %   \  |y /(N)
                     %    \ | /
                     %     \|/_____x(E)
-                    rads = Grads*pi/180;%   rr=gg*pi/180
-                    xproj = cos(rads);
-                    yproj = sin(rads);
-                    zproj = 0*rads;
-                    quiver3(h_ax, surface_locations(:,1),surface_locations(:,2),surface_locations(:,3), xproj(processed_ids),yproj(processed_ids),zproj(processed_ids), scalearrows,'k')
-                    %
+                    Rads = Grads*pi/180;%   rr=gg*pi/180
+                    xproj = cos(Rads);%  scalearrows*Dxy  ;
+                    yproj = sin(Rads);
+                    for d = 1:Nactive
+%                         if enforce_min_amplitude_diff_hreshold_for_reliable_directionality% as a percentage 190120
+%                             if Ampl(d)<aag% Ampl(d) is weight =100*abs(amplimax-aver)/aver; % percent difference of maximum and average
+%                                 Ampl(d) = 0;
+%                             end 
+%                         end% 190120
+                        xproj(d) = Ampl(d)*xproj(d);
+                        yproj(d) = Ampl(d)*yproj(d);
+                    end
+                    zproj = 0*Rads;
+                    %quiver3(h_ax, surface_locations(:,1),surface_locations(:,2),surface_locations(:,3), xproj(processed_ids),yproj(processed_ids),zproj(processed_ids), scalearrows,'k')
+                    quiver3(h_ax,Xscatt,Yscatt,Zscatt,   xproj,yproj,zproj, scalearrows,'k')
+                        
+                %% measure points
+                %% stations
+                    hold(h_ax,'on')   
+                    if strcmp( get(H.menu.view.view2d_Stations,'Checked'), 'on')    
+                        for d = 1:Ndata
+                            clr = 'k';
+                            if DTB__status(d,1) ~= 2
+                                if ~isnan(DTB__hvsr__user_main_peak_frequence(d,1))
+                                    clr = 'g';
+                                else
+                                    clr = 'r';
+                                end
+                            end
+                            plot3(h_ax,Xscatt(d),Yscatt(d),Zscatt(d),'o','Color',clr,'MarkerFaceColor',clr);% auto-selected
+                            hold(h_ax,'on')
+                        end
+                    end
+                    
                     %xlabel(h_ax,'X (E/W)','fontweight','bold')
                     switch USER_PREFERENCE_hvsr_directional_reference_system
                         case 'compass'
@@ -8570,12 +8655,11 @@ fprintf('[READY !]\n');
                             otherwise
                                 Grads2 = Grads;
                         end
-                        for d = 1:size(surface_locations,1)
+                        for d = 1:size(Zscatt,1)
                             tst = strcat(num2str(Grads2(d)), sprintf(char(176)));
-                            text(surface_locations(d,1),surface_locations(d,2),surface_locations(d,3), tst  );
+                            text(Xscatt(d),Yscatt(d),Zscatt(d), tst  );
                         end
                     end
-
                     %% station annotation
                     if strcmp( get(H.menu.view.view3d_Station_Annotation,'Checked'), 'on')    
                         for d = 1:size(surface_locations,1)
@@ -9320,8 +9404,7 @@ fprintf('[READY !]\n');
         %             %
         %             NEWDAT = T2DAT;
     end
-
-%    SINGLE DATA
+%%    SINGLE DATA
     function compute_single_windowing(dat_id) % always using displayed parameters
         if dat_id==0; return; end
         if DTB__status(dat_id,1) == 1% if status == 0 data will not be changed
@@ -9919,7 +10002,6 @@ fprintf('[READY !]\n');
             Fvect = df*((ifmin:ifmax)-1);
             %>> warning('SAM: check if fmax is the full frequency vector maximum')
             DTB__section__Frequency_Vector{dat_id,1} = [ifmin, ifmax, df];
-
             %% H/V of Windows (OPTION-A, smooth final curves. [Is the less efficient approach] )
             %         fprintf('OPTION-A\n')
             %         EV = E./V;
