@@ -75,6 +75,7 @@ well_to_show                  = 0;
 %
 datafile_columns   = [1 2 3];% [V  EW  NS]
 datafile_separator = 'none';% in data files: separator between HEADER and DDAT
+temporary_profile = cell(1,3);% temporarily store here a profile matrix (To allow user output in txt): {matrix}{x}{z}  
 %
 %
 %
@@ -156,8 +157,7 @@ DTB__hvsr__curve_NV={};%              DTB{s,1}.hvsr.curve_NV = [];
         %
 DTB__hvsr__peaks_idx={};%        DTB{s,1}.hvsr.peaks_idx = [];   %index of local maxima
 DTB__hvsr__hollows_idx={};%        DTB{s,1}.hvsr.hollows_idx = [];   %index of local minima
-        %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
-        % hvsr peaks (authomatic/user)
+DTB__hvsr__user_additional_peaks={};%        additional user-selected peaks [id in section, id in full curve, frequence, amplitude]190330
 DTB__hvsr__user_main_peak_frequence = [];%        DTB{s,1}.hvsr.user_main_peak_frequence = NaN;
 DTB__hvsr__user_main_peak_amplitude = [];%        DTB{s,1}.hvsr.user_main_peak_amplitude = NaN;
 DTB__hvsr__user_main_peak_id_full_curve = [];%         DTB{s,1}.hvsr.hvsr.user_main_peak_id_full_curve = NaN; <<<<<< ISSUE
@@ -196,7 +196,6 @@ REFERENCE_MODEL_zpoints  = [];
 %litotypes = {};       %% Future evolutions
 %run('Litotypes.m')    %% Future evolutions
 %% xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
 %% MAIN GUI ===============================================================
 %% BUILD INTERFACE COMPONENTS
 %% MENUS
@@ -689,7 +688,7 @@ uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize, ...
 end
 %
 %%     Objets on panel B
-%%         Surveys locations
+%%         MAP Surveys locations
 pos_axes_geo0 = [0.1 0.1 0.85 0.85];
 hAx_geo_hcmenu = uicontextmenu;
 uimenu(hAx_geo_hcmenu, 'Label', 'Define 2D profile',    'Callback', {@define_Profile});
@@ -1199,7 +1198,12 @@ hAx_speN_hcmenu_2 = uimenu(hAx_speN_hcmenu , 'Label', 'Resume windows',    'Call
 hAx_speN_hcmenu_5 = uimenu(hAx_speN_hcmenu , 'Label', 'Delete curves',     'Callback', {@CM_spectrum_delete_curves}, 'Separator','on');
 hAx_speN_hcmenu_6 = uimenu(hAx_speN_hcmenu , 'Label', 'Resume curves',     'Callback', {@CM_spectrum_resume_curves});
 hAx_speN_hcmenu_3 = uimenu(hAx_speN_hcmenu , 'Label', 'Use Manual Peak',   'Callback', {@CM_spectrum_select_main_peak}, 'Separator','on');
-hAx_speN_hcmenu_4 = uimenu(hAx_speN_hcmenu , 'Label', 'Use Auto Peak',     'Callback', {@CM_spectrum_deselect_main_peak});
+hAx_speN_hcmenu_4 = uimenu(hAx_speN_hcmenu , 'Label', 'Use Automatic Peak',     'Callback', {@CM_spectrum_deselect_main_peak});
+%
+hAx_speN_hcmenu_7 = uimenu(hAx_speN_hcmenu , 'Label', 'Select additional peak',   'Callback', {@CM_spectrum_select_additional_peak}, 'Separator','on');
+hAx_speN_hcmenu_9 = uimenu(hAx_speN_hcmenu , 'Label', 'Remove last additional peak',   'Callback', {@CM_spectrum_discard_last_additional_peak_selections});
+hAx_speN_hcmenu_8 = uimenu(hAx_speN_hcmenu , 'Label', 'Discard all additional peaks', 'Callback', {@CM_spectrum_discard_additional_peak_selections});
+%
 uimenu(hAx_speN_hcmenu , 'Label', 'Set vertical range',    'Callback',{@CM_speN_SetrangeVax}, 'Separator','on');
 uimenu(hAx_speN_hcmenu , 'Label', 'Reset vertical range',  'Callback',{@CM_speN_resetVax});
 uimenu(hAx_speN_hcmenu , 'Label', 'Set horizontal range',  'Callback',{@CM_speN_SetrangeHax}, 'Separator','on');
@@ -1557,6 +1561,12 @@ T4_2D_Prf_3 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'S
     'String','N/V SR', ...
     'Units','normalized','Position',[objx(2), objy(row), objw(2), objh], ...
     'Callback',{@BT_show_property,3});
+% Confidence
+row = row+1;
+T4_2D_Prf_4 = uicontrol('FontSize',USER_PREFERENCE_interface_objects_fontsize,'Style','pushbutton','parent',H.PANELS{P.tab_id}.A, ...
+    'String','Confidence 95%', ...
+    'Units','normalized','Position',[objx(2), objy(row), objw(2), objh], ...
+    'Callback',{@BT_show_property,4});
 %
 if strcmp(USER_PREFERENCE_Move_over_suggestions,'on')
     tipstring = sprintf('Profile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
@@ -1569,6 +1579,7 @@ if strcmp(USER_PREFERENCE_Move_over_suggestions,'on')
     %
     set(T4_2D_Prf_2,'TooltipString','Show the average E/V in the profile.')
     set(T4_2D_Prf_3,'TooltipString','Show the average N/V in the profile.')
+    set(T4_2D_Prf_4,'TooltipString','Show 95% confidence in the profile.')
 end
 %
 %
@@ -1577,9 +1588,11 @@ end
 %%hP3_TA_buttongroup.Visible = 'on';
 %%     Objets on panel B
 %%         2D-Views
-pos_axes_2DView = [0.1 0.1 0.85 0.85];
+pos_axes_2DView = [0.1 0.1 0.85 0.85]; 
 hAx_2D_hcmenu = uicontextmenu;
 uimenu(hAx_2D_hcmenu, 'Label', 'Edit externally',    'Callback', {@plot_extern,5});
+uimenu(hAx_2D_hcmenu, 'Label', 'Export last visualized profile','Callback', {@export_last_profile});%, 'Separator','on');
+uimenu(hAx_2D_hcmenu, 'Label', 'Export current profile as a stand-alone elaboration','Callback', {@export_current_profile_as_standalone_elaboration});%, 'Separator','on');
 hAx_2DViews = axes('Parent',H.PANELS{P.tab_id}.B,'Units', 'normalized','FontSize',USER_PREFERENCE_interface_objects_fontsize,'Position',pos_axes_2DView,'uicontextmenu',hAx_2D_hcmenu);
 %%     Objets on panel C
 objh = get_normalheight_on_panel( H.PANELS{P.tab_id}.C, G.main_objh );
@@ -2524,8 +2537,8 @@ fprintf('[READY !]\n');
                         %
                 iDTB__hvsr__peaks_idx = DTB__hvsr__peaks_idx{ii,1};
                 iDTB__hvsr__hollows_idx = DTB__hvsr__hollows_idx{ii,1};
-                        %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
-                        % hvsr peaks (authomatic/user)
+                iDTB__hvsr__user_additional_peaks = DTB__hvsr__user_additional_peaks{ii,1};
+                %
                 iDTB__hvsr__user_main_peak_frequence = DTB__hvsr__user_main_peak_frequence(ii,1);
                 iDTB__hvsr__user_main_peak_amplitude = DTB__hvsr__user_main_peak_amplitude(ii,1);
                 iDTB__hvsr__user_main_peak_id_full_curve = DTB__hvsr__user_main_peak_id_full_curve(ii,1);
@@ -2624,6 +2637,7 @@ fprintf('[READY !]\n');
                 ...
                 'iDTB__hvsr__peaks_idx', ... 
                 'iDTB__hvsr__hollows_idx', ...
+                'iDTB__hvsr__user_additional_peaks', ... % 190330
                 'iDTB__hvsr__user_main_peak_frequence', ...
                 'iDTB__hvsr__user_main_peak_amplitude', ...
                 'iDTB__hvsr__user_main_peak_id_full_curve', ...
@@ -2825,11 +2839,11 @@ fprintf('[READY !]\n');
                         DTB__hvsr__standard_deviation{ii,1} = loaded.iDTB__hvsr__standard_deviation; 
                         DTB__hvsr__curve_EV{ii,1} = loaded.iDTB__hvsr__curve_EV;
                         DTB__hvsr__curve_NV{ii,1} = loaded.iDTB__hvsr__curve_NV; 
-                                %
+                        %
                         DTB__hvsr__peaks_idx{ii,1} = loaded.iDTB__hvsr__peaks_idx; 
                         DTB__hvsr__hollows_idx{ii,1} = loaded.iDTB__hvsr__hollows_idx; 
-                                %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
-                                % hvsr peaks (authomatic/user)
+                        if isfield(loaded,'iDTB__hvsr__user_additional_peaks'); DTB__hvsr__user_additional_peaks{ii,1} = loaded.iDTB__hvsr__user_additional_peaks; end
+                       %                       iDTB__hvsr__user_additional_peaks
                         DTB__hvsr__user_main_peak_frequence(ii,1) = loaded.iDTB__hvsr__user_main_peak_frequence; 
                         DTB__hvsr__user_main_peak_amplitude(ii,1) = loaded.iDTB__hvsr__user_main_peak_amplitude; 
                         DTB__hvsr__user_main_peak_id_full_curve(ii,1) = loaded.iDTB__hvsr__user_main_peak_id_full_curve; 
@@ -3021,7 +3035,7 @@ fprintf('[READY !]\n');
                 fprintf('at the following email: sedysen@gmail.com\n')
                 fprintf(' \n')
                 error('For safety, the program is terminated at this point and will need restart.\n')
-                close(H.gui);
+                close(H.gui);%#ok
                 return
             end
             fprintf('[Elaboration loaded correctly]\n')
@@ -3524,6 +3538,7 @@ fprintf('[READY !]\n');
                 end
             end
             Update_profile_locations(hAx_main_geo);
+            is_done();
         else
             Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
             msgbox(Message,'INFO')
@@ -3567,6 +3582,7 @@ fprintf('[READY !]\n');
                 end
             end
             Update_profile_locations(hAx_main_geo);
+            is_done();
         else
             Message = sprintf('NO PROFILES WERE CREATED\n. \nProfile Creation: (On "Main" Tab)\n1) Define profiles by right-clicking on the map.\n2) Click to set the profile''s start point.\n3) Click again to set the profile''s end point.\n4) Include stations by entering the desired distance from profile.\n5) Use add/remove buttons to include/exclude single stations.\n \nProfile Visualization: (on this Tab)\n1) Select a profile to be shown using the [-][->][+] buttons.\n2) Select a the property to be shown using buttons on the rigth.');
             msgbox(Message,'INFO')
@@ -3748,6 +3764,16 @@ fprintf('[READY !]\n');
     end
     function CM_spectrum_deselect_main_peak(~,~,~)
         deselect_main_peak();
+    end
+    %
+    function CM_spectrum_select_additional_peak(~,~,~)
+         select_additional_peak();
+    end
+    function CM_spectrum_discard_last_additional_peak_selections(~,~,~)
+        discard_last_additional_peak();
+    end
+    function CM_spectrum_discard_additional_peak_selections(~,~,~)
+        deselect_additional_peak();
     end
     %
     function CM_speN_SetrangeHax(~,~,~)
@@ -4145,6 +4171,9 @@ fprintf('[READY !]\n');
         set(hAx_speN_hcmenu_4,'Enable','off')
         set(hAx_speN_hcmenu_5,'Enable','off')
         set(hAx_speN_hcmenu_6,'Enable','off')
+        set(hAx_speN_hcmenu_7,'Enable','off')
+        set(hAx_speN_hcmenu_8,'Enable','off')
+        set(hAx_speN_hcmenu_9,'Enable','off')
         if(P.Flags.spectrum_mode<4)% 0-3, tiled view of spectre or HVSR curves
             set(hAx_speN_hcmenu_1,'Enable','on')
             set(hAx_speN_hcmenu_2,'Enable','on')
@@ -4152,10 +4181,16 @@ fprintf('[READY !]\n');
         if(P.Flags.spectrum_mode==4)% 4, view of mean HVSR (mode a)
             set(hAx_speN_hcmenu_3,'Enable','on')
             set(hAx_speN_hcmenu_4,'Enable','on')
+            set(hAx_speN_hcmenu_7,'Enable','on')
+            set(hAx_speN_hcmenu_8,'Enable','on')
+            set(hAx_speN_hcmenu_9,'Enable','on')
         end
         if(P.Flags.spectrum_mode==5)% 5, view of mean HVSR (mode b): compare VEN 
             set(hAx_speN_hcmenu_3,'Enable','on')
             set(hAx_speN_hcmenu_4,'Enable','on')
+            set(hAx_speN_hcmenu_7,'Enable','on')
+            set(hAx_speN_hcmenu_8,'Enable','on')
+            set(hAx_speN_hcmenu_9,'Enable','on')
         end
         if(P.Flags.spectrum_mode==6)% 6, view of mean HVSR (mode c): all curves
             set(hAx_speN_hcmenu_5,'Enable','on')
@@ -4608,6 +4643,7 @@ fprintf('[READY !]\n');
         % property ID = 1:     HVSR
         % property ID = 2:     E-VSR
         % property ID = 3:     N-VSR
+        % property ID = 4:     Confidence
         P.Flags.View_2D_current_mode = 'profile';
         P.Flags.View_2D_current_submode = parameter_id;
         Graphics_plot_2d_profile(0);
@@ -4721,7 +4757,321 @@ fprintf('[READY !]\n');
                 S2Dview_hvsr_main_frequence();%% option-1
         end       
     end
-%% TAB 5 ====================== 3D Views 
+    function export_last_profile(~,~,~)
+        if isempty(temporary_profile); return; end
+        [file,thispath] =  uiputfile('*.mat','Save last profile', 'Last_Profile.mat');
+        if(file ~= 0)
+            datname = strcat(thispath,file);
+            save(datname, 'temporary_profile');
+        end
+    end
+    function export_current_profile_as_standalone_elaboration(~,~,~)
+        if isempty(SURVEYS); return; end
+        if P.profile.id==0; return; end
+        if P.profile.id>size(P.profile_ids,1); P.profile.id=size(P.profile_ids,1); end
+        
+        % [file,thispath] =  uiputfile('*.mat','Save elaboration', strcat(working_folder,'Profile_',num2str(P.profile.id),'__Standalone_Elaboration.mat'));
+        [file,thispath] =  uiputfile('*.mat','Save elaboration', strcat('Profile_',num2str(P.profile.id),'__Standalone_Elaboration.mat'));
+        %% =========================== V2.0.0 - V2.1.0 
+        if(file ~= 0)
+            is_busy();
+            N_hv_in_profile = size(P.profile_ids{P.profile.id,1},1);
+            
+            name = file(1:end-4);
+            %%   MAIN
+            datname = strcat(thispath,name,'_MAIN.mat');
+            appname = P.appname;
+            % save_version = 2;% 181111: version with one full DDAT FDAT
+            save_version = 3;% 190131: version with split DDAT FDAT
+            
+            iprofile = P.profile;
+            iprofile_ids  = cell(1); iprofile_ids{1}  = P.profile_ids{P.profile.id};%   Reduced for the profile
+            iprofile_line = cell(1); iprofile_line{1} = P.profile_line{P.profile.id};%P.profile_line;%     Reduced for the profile
+            iprofile_onoff= cell(1); iprofile_onoff{1}= P.profile_onoff{P.profile.id};%P.profile_onoff;%  Reduced for the profile
+            iprofile_name = cell(1); iprofile_name{1} = P.profile_name{P.profile.id};% P.profile_name;%   Reduced for the profile
+            
+            %% extract relevant stuff
+            Copy_of_SURVEYS = SURVEYS;
+            %
+            newid = 0;
+            SURVEYS = cell(N_hv_in_profile, size(Copy_of_SURVEYS,2) );
+            for iia=1:N_hv_in_profile
+                ii =P.profile_ids{P.profile.id,1}(iia,1);
+                newid = newid+1;
+                for cc=1:size(Copy_of_SURVEYS,2)
+                    iprofile_ids{1}(newid,1) = newid;% change station ids according to the new set
+                    %
+                    SURVEYS{newid,cc} = Copy_of_SURVEYS{ii,cc};
+                end
+            end
+            
+            save(datname, ...
+                'appname', ... %181111  just to check the correct data is loaded
+                'save_version', ...%181111 discern which load function to run
+                'file', ...
+                'thispath', ...
+                ...% 'DDAT', ... 190131:  DDAT FDAT are now split
+                ...% 'FDAT', ... 190131:  DDAT FDAT are now split
+                'Matlab_Release', ...
+                'Matlab_Release_num', ...
+                'SURVEYS', ...% <----------------------------------------- Reduced for the profile
+                'TOPOGRAPHY', ...% MANUALLY PLACED HERE
+                'WELLS', ...
+                'WLLS', ...
+                'datafile_columns', ...
+                'datafile_separator', ...
+                'receiver_locations', ...
+                'reference_system', ...
+                'sampling_frequences', ...
+                ...% 'survey_boundingboox', ...
+                'working_folder', ...
+                'iprofile', ...
+                'iprofile_ids', ...% <------------------------------------ Reduced for the profile
+                'iprofile_line', ...% <----------------------------------- Reduced for the profile
+                'iprofile_onoff', ...% <---------------------------------- Reduced for the profile
+                'iprofile_name');% <-------------------------------------- Reduced for the profile
+            SURVEYS = Copy_of_SURVEYS;% restore the original SURVEY variable
+            Global_NN = size(SURVEYS,1);
+            NN =  N_hv_in_profile;
+            sNN = num2str(NN);
+            newid=0;
+            for iia=1:N_hv_in_profile
+                ii =P.profile_ids{P.profile.id,1}(iia,1);
+                newid = newid+1;
+                fprintf('Save %d/%d  as ID %d/%d',ii,Global_NN, newid,NN)
+                %fprintf('Save %d/%d  as ID %d',ii,NN,newid) 
+                datname = strcat(thispath,name,'_database_',num2str(newid),'of',sNN,'.mat');
+                %% COPY 
+                ID_IN_OROGINAL_PROJECT = ii;
+                %%   DTB__status
+                iDTB__status = DTB__status(ii,1);%                                            
+                iDTB__elaboration_progress = DTB__elaboration_progress(ii,1);
+                %%   DTB__windows
+                iDTB__windows__width_sec = DTB__windows__width_sec(ii,1);          
+                iDTB__windows__number =DTB__windows__number(ii,1);
+                iDTB__windows__number_fft = DTB__windows__number_fft(ii,1);
+                iDTB__windows__indexes = DTB__windows__indexes{ii,1};
+                iDTB__windows__is_ok = DTB__windows__is_ok{ii,1};
+                iDTB__windows__winv = DTB__windows__winv{ii,1};                 
+                iDTB__windows__wine = DTB__windows__wine{ii,1};
+                iDTB__windows__winn = DTB__windows__winn{ii,1};
+                iDTB__windows__fftv = DTB__windows__fftv{ii,1};
+                iDTB__windows__ffte = DTB__windows__ffte{ii,1};
+                iDTB__windows__fftn = DTB__windows__fftn{ii,1};
+                iDTB__windows__info = DTB__windows__info(ii,:);                  
+                %%   i = DTB__elab_parameters        
+                iDTB__elab_parameters__status = DTB__elab_parameters__status{ii,1};
+                iDTB__elab_parameters__hvsr_strategy = DTB__elab_parameters__hvsr_strategy(ii,1);
+                iDTB__elab_parameters__hvsr_freq_min = DTB__elab_parameters__hvsr_freq_min(ii,1);
+                iDTB__elab_parameters__hvsr_freq_max = DTB__elab_parameters__hvsr_freq_max(ii,1);
+                iDTB__elab_parameters__windows_width = DTB__elab_parameters__windows_width(ii,1);
+                iDTB__elab_parameters__windows_overlap = DTB__elab_parameters__windows_overlap(ii,1);
+                iDTB__elab_parameters__windows_tapering = DTB__elab_parameters__windows_tapering(ii,1);
+                iDTB__elab_parameters__windows_sta_vs_lta = DTB__elab_parameters__windows_sta_vs_lta(ii,1);
+                iDTB__elab_parameters__windows_pad = DTB__elab_parameters__windows_pad{ii,1};
+                iDTB__elab_parameters__smoothing_strategy = DTB__elab_parameters__smoothing_strategy(ii,1);
+                iDTB__elab_parameters__smoothing_slider_val = DTB__elab_parameters__smoothing_slider_val(ii,1);
+                        %
+                        % filter
+                iDTB__elab_parameters__filter_id = DTB__elab_parameters__filter_id(ii,1);
+                iDTB__elab_parameters__filter_name = DTB__elab_parameters__filter_name{ii,1};
+                iDTB__elab_parameters__filter_order = DTB__elab_parameters__filter_order(ii,1);
+                iDTB__elab_parameters__filterFc1 = DTB__elab_parameters__filterFc1(ii,1);
+                iDTB__elab_parameters__filterFc2 = DTB__elab_parameters__filterFc2(ii,1);
+                iDTB__elab_parameters__data_to_use = DTB__elab_parameters__data_to_use(ii,1);
+                iDTB__elab_parameters__THEfilter = DTB__elab_parameters__THEfilter{ii,1};
+                %%   i = DTB__section
+                iDTB__section__Min_Freq = DTB__section__Min_Freq(ii,1);
+                iDTB__section__Max_Freq = DTB__section__Max_Freq(ii,1);
+                iDTB__section__Frequency_Vector = DTB__section__Frequency_Vector{ii,1};
+                        %
+                iDTB__section__V_windows = DTB__section__V_windows{ii,1};
+                iDTB__section__E_windows = DTB__section__E_windows{ii,1};
+                iDTB__section__N_windows = DTB__section__N_windows{ii,1};
+                        %
+                iDTB__section__Average_V = DTB__section__Average_V{ii,1};
+                iDTB__section__Average_E = DTB__section__Average_E{ii,1};
+                iDTB__section__Average_N = DTB__section__Average_N{ii,1};
+                        %
+                iDTB__section__HV_windows = DTB__section__HV_windows{ii,1};
+                iDTB__section__EV_windows = DTB__section__EV_windows{ii,1};
+                iDTB__section__NV_windows = DTB__section__NV_windows{ii,1};
+                %%   i = DTB__hvsr
+                iDTB__hvsr__curve_full = DTB__hvsr__curve_full{ii,1};
+                %DTB{s,1}.hvsr.error_full = [];
+                iDTB__hvsr__confidence95_full = DTB__hvsr__confidence95_full{ii,1};
+                iDTB__hvsr__curve_EV_full = DTB__hvsr__curve_EV_full{ii,1};
+                iDTB__hvsr__curve_NV_full = DTB__hvsr__curve_NV_full{ii,1};
+                %
+                iDTB__hvsr__EV_all_windows = DTB__hvsr__EV_all_windows{ii,1};
+                iDTB__hvsr__NV_all_windows = DTB__hvsr__NV_all_windows{ii,1};
+                iDTB__hvsr__HV_all_windows = DTB__hvsr__HV_all_windows{ii,1};
+                %
+                iDTB__hvsr__curve = DTB__hvsr__curve{ii,1};
+                        %DTB{s,1}.hvsr.error = [];
+                iDTB__hvsr__confidence95 = DTB__hvsr__confidence95{ii,1};
+                iDTB__hvsr__standard_deviation = DTB__hvsr__standard_deviation{ii,1};
+                iDTB__hvsr__curve_EV = DTB__hvsr__curve_EV{ii,1};
+                iDTB__hvsr__curve_NV = DTB__hvsr__curve_NV{ii,1};
+                        %
+                iDTB__hvsr__peaks_idx = DTB__hvsr__peaks_idx{ii,1};
+                iDTB__hvsr__hollows_idx = DTB__hvsr__hollows_idx{ii,1};
+                iDTB__hvsr__user_additional_peaks = DTB__hvsr__user_additional_peaks{ii,1};
+                %
+                iDTB__hvsr__user_main_peak_frequence = DTB__hvsr__user_main_peak_frequence(ii,1);
+                iDTB__hvsr__user_main_peak_amplitude = DTB__hvsr__user_main_peak_amplitude(ii,1);
+                iDTB__hvsr__user_main_peak_id_full_curve = DTB__hvsr__user_main_peak_id_full_curve(ii,1);
+                iDTB__hvsr__user_main_peak_id_in_section = DTB__hvsr__user_main_peak_id_in_section(ii,1);
+                iDTB__hvsr__auto_main_peak_frequence = DTB__hvsr__auto_main_peak_frequence(ii,1);
+                iDTB__hvsr__auto_main_peak_amplitude = DTB__hvsr__auto_main_peak_amplitude(ii,1);
+                iDTB__hvsr__auto_main_peak_id_full_curve = DTB__hvsr__auto_main_peak_id_full_curve(ii,1);
+                iDTB__hvsr__auto_main_peak_id_in_section = DTB__hvsr__auto_main_peak_id_in_section(ii,1);
+                %
+                %%   i = DTB__hvsr180
+                iDTB__hvsr180__angle_id = DTB__hvsr180__angle_id(ii,1);
+                iDTB__hvsr180__angles = DTB__hvsr180__angles{ii,1};
+                iDTB__hvsr180__angle_step = DTB__hvsr180__angle_step(ii,1);
+                iDTB__hvsr180__spectralratio = DTB__hvsr180__spectralratio{ii,1};
+                iDTB__hvsr180__preferred_direction = DTB__hvsr180__preferred_direction{ii,1};
+                %%   i = DTB__well
+                iDTB__well__well_id = DTB__well__well_id(ii,1);
+                iDTB__well__well_name = DTB__well__well_name{ii,1};
+                iDTB__well__bedrock_depth__KNOWN = DTB__well__bedrock_depth__KNOWN{ii,1};
+                iDTB__well__bedrock_depth_source = DTB__well__bedrock_depth_source{ii,1};
+                iDTB__well__bedrock_depth__COMPUTED = DTB__well__bedrock_depth__COMPUTED{ii,1};
+                iDTB__well__bedrock_depth__IBS1999 = DTB__well__bedrock_depth__IBS1999{ii,1};
+                iDTB__well__bedrock_depth__PAROLAI2002 = DTB__well__bedrock_depth__PAROLAI2002{ii,1};
+                iDTB__well__bedrock_depth__HINZEN2004 = DTB__well__bedrock_depth__HINZEN2004{ii,1};
+                %% Database =====================END
+
+                save(datname, ...
+                ... %%   DTB__status
+                'ID_IN_OROGINAL_PROJECT', ...% because the profile will hold a subset of the original measurements
+                'iDTB__status', ...                                            
+                'iDTB__elaboration_progress', ... 
+                ...%%   DTB__windows
+                'iDTB__windows__width_sec', ...          
+                'iDTB__windows__number', ...
+                'iDTB__windows__number_fft', ... 
+                'iDTB__windows__indexes', ... 
+                'iDTB__windows__is_ok', ... 
+                'iDTB__windows__winv', ...                 
+                'iDTB__windows__wine', ... 
+                'iDTB__windows__winn', ... 
+                'iDTB__windows__fftv', ... 
+                'iDTB__windows__ffte', ... 
+                'iDTB__windows__fftn', ... 
+                'iDTB__windows__info', ...                 
+                ...%%   DTB__elab_parameters        
+                'iDTB__elab_parameters__status', ...
+                'iDTB__elab_parameters__hvsr_strategy', ...
+                'iDTB__elab_parameters__hvsr_freq_min', ...
+                'iDTB__elab_parameters__hvsr_freq_max', ...
+                'iDTB__elab_parameters__windows_width', ...
+                'iDTB__elab_parameters__windows_overlap', ...
+                'iDTB__elab_parameters__windows_tapering', ...
+                'iDTB__elab_parameters__windows_sta_vs_lta', ...
+                'iDTB__elab_parameters__windows_pad', ...
+                'iDTB__elab_parameters__smoothing_strategy', ...
+                'iDTB__elab_parameters__smoothing_slider_val', ...
+                ...% filter
+                'iDTB__elab_parameters__filter_id', ... 
+                'iDTB__elab_parameters__filter_name', ... 
+                'iDTB__elab_parameters__filter_order', ...
+                'iDTB__elab_parameters__filterFc1', ...
+                'iDTB__elab_parameters__filterFc2', ...
+                'iDTB__elab_parameters__data_to_use', ...
+                'iDTB__elab_parameters__THEfilter', ...
+                ...%%   DTB__section
+                'iDTB__section__Min_Freq', ...
+                'iDTB__section__Max_Freq', ...
+                'iDTB__section__Frequency_Vector', ...
+                ...
+                'iDTB__section__V_windows', ... 
+                'iDTB__section__E_windows', ...
+                'iDTB__section__N_windows', ... 
+                ...
+                'iDTB__section__Average_V', ... 
+                'iDTB__section__Average_E', ... ;
+                'iDTB__section__Average_N', ...
+                ...
+                'iDTB__section__HV_windows', ... 
+                'iDTB__section__EV_windows', ...
+                'iDTB__section__NV_windows', ...
+                ...%%  DTB__hvsr
+                'iDTB__hvsr__curve_full', ... 
+                ...%DTB{s,1}.hvsr.error_full', ... [];
+                'iDTB__hvsr__confidence95_full', ... 
+                'iDTB__hvsr__curve_EV_full', ...
+                'iDTB__hvsr__curve_NV_full', ...
+                ...
+                'iDTB__hvsr__EV_all_windows', ...
+                'iDTB__hvsr__NV_all_windows', ...
+                'iDTB__hvsr__HV_all_windows', ...
+                'iDTB__hvsr__curve', ...
+                ...        %DTB{s,1}.hvsr.error', ... [];
+                'iDTB__hvsr__confidence95', ...
+                'iDTB__hvsr__standard_deviation', ...
+                'iDTB__hvsr__curve_EV', ...
+                'iDTB__hvsr__curve_NV', ...
+                ...
+                'iDTB__hvsr__peaks_idx', ... 
+                'iDTB__hvsr__hollows_idx', ...
+                'iDTB__hvsr__user_additional_peaks', ...
+                'iDTB__hvsr__user_main_peak_frequence', ...
+                'iDTB__hvsr__user_main_peak_amplitude', ...
+                'iDTB__hvsr__user_main_peak_id_full_curve', ...
+                'iDTB__hvsr__user_main_peak_id_in_section', ...
+                'iDTB__hvsr__auto_main_peak_frequence', ... 
+                'iDTB__hvsr__auto_main_peak_amplitude', ... 
+                'iDTB__hvsr__auto_main_peak_id_full_curve', ... 
+                'iDTB__hvsr__auto_main_peak_id_in_section', ... 
+                ...%%   DTB__hvsr180
+                'iDTB__hvsr180__angle_id', ... 
+                'iDTB__hvsr180__angles', ... 
+                'iDTB__hvsr180__angle_step', ... 
+                'iDTB__hvsr180__spectralratio', ...
+                'iDTB__hvsr180__preferred_direction', ... 
+                ...%%   DTB__well
+                'iDTB__well__well_id', ... 
+                'iDTB__well__well_name', ...
+                'iDTB__well__bedrock_depth__KNOWN', ... 
+                'iDTB__well__bedrock_depth_source', ... 
+                'iDTB__well__bedrock_depth__COMPUTED', ... 
+                'iDTB__well__bedrock_depth__IBS1999', ... 
+                'iDTB__well__bedrock_depth__PAROLAI2002', ...
+                'iDTB__well__bedrock_depth__HINZEN2004');   
+                
+                fprintf('..OK\n')
+            end
+            %
+            newid=0;
+            for iia=1:N_hv_in_profile
+                ii =P.profile_ids{P.profile.id,1}(iia,1);
+                newid = newid+1;
+                fprintf('Store data %d/%d  as ID %d/%d',ii,Global_NN, newid,NN) 
+                datname = strcat(thispath,name,'_data_',num2str(newid),'of',sNN,'.mat');
+                iDDAT1 = DDAT{ii,1};
+                iDDAT2 = DDAT{ii,2};
+                iDDAT3 = DDAT{ii,3};
+                iFDAT1 = [];
+                iFDAT2 = [];
+                iFDAT3 = [];
+                if ~isempty(FDAT)
+                    if (~isempty(FDAT{ii,1})) && (~isempty(FDAT{ii,2})) && (~isempty(FDAT{ii,3}))
+                        iFDAT1 = FDAT{ii,1};
+                        iFDAT2 = FDAT{ii,2};
+                        iFDAT3 = FDAT{ii,3};
+                    end
+                end
+                save(datname, 'iDDAT1', 'iDDAT2', 'iDDAT3',  'iFDAT1', 'iFDAT2', 'iFDAT3');
+                fprintf('OK\n')
+            end
+            is_done();
+            fprintf('[Profile stand-alone Elaboration saved]\n')
+        end             
+    end
+%% TAB 5 ====================== 3D Views
     function CB_TAB_create_reference_scales(~,~,~)
         if ~isempty(SURVEYS)
             %% Generate a reference Frequence scale
@@ -5241,18 +5591,17 @@ fprintf('[READY !]\n');
         %
         DTB__hvsr__peaks_idx = cell(Nsurveys,1);   %index of local maxima
         DTB__hvsr__hollows_idx = cell(Nsurveys,1);   %index of local minima
-        %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
-        % hvsr peaks (authomatic/user)
+        DTB__hvsr__user_additional_peaks = cell(Nsurveys,1);% 190330 
+        %
         DTB__hvsr__user_main_peak_frequence = NaN * ones(Nsurveys,1);
         DTB__hvsr__user_main_peak_amplitude = NaN * ones(Nsurveys,1);
         DTB__hvsr__user_main_peak_id_full_curve = NaN * ones(Nsurveys,1);
         DTB__hvsr__user_main_peak_id_in_section = NaN * ones(Nsurveys,1);
-        
+        %
         DTB__hvsr__auto_main_peak_frequence = NaN * ones(Nsurveys,1);
         DTB__hvsr__auto_main_peak_amplitude = NaN * ones(Nsurveys,1);
         DTB__hvsr__auto_main_peak_id_full_curve= NaN * ones(Nsurveys,1);
         DTB__hvsr__auto_main_peak_id_in_section = NaN * ones(Nsurveys,1);
-        
         %
         %%   DTB__hvsr180.
         %       hvsr computed on 180 deg at a specified step
@@ -5280,6 +5629,8 @@ fprintf('[READY !]\n');
             DTB__elab_parameters__status{s,1}       = 'Not confirmed';
             DTB__elab_parameters__windows_pad{s,1} = default_values.pad_length;
             DTB__elab_parameters__filter_name{s,1}  = 'none';
+            %
+            DTB__hvsr__user_additional_peaks{s,1} = [];
             %
             DTB__well__well_name{s,1}                                  = '';
             DTB__well__bedrock_depth__KNOWN{s,1}          = 'n.a.';
@@ -5410,8 +5761,8 @@ fprintf('[READY !]\n');
             %
         DTB__hvsr__peaks_idx={};%        DTB{s,1}.hvsr.peaks_idx = [];   %index of local maxima
         DTB__hvsr__hollows_idx={};%        DTB{s,1}.hvsr.hollows_idx = [];   %index of local minima
-            %DTB{s,1}.hvsr.main_peak_id = [];  %index of main peak (in the selected freq. range)
-            % hvsr peaks (authomatic/user)
+        DTB__hvsr__user_additional_peaks = {};% 190330
+        %
         DTB__hvsr__user_main_peak_frequence = [];%        DTB{s,1}.hvsr.user_main_peak_frequence = NaN;
         DTB__hvsr__user_main_peak_amplitude = [];%        DTB{s,1}.hvsr.user_main_peak_amplitude = NaN;
         DTB__hvsr__user_main_peak_id_full_curve = [];%         DTB{s,1}.hvsr.hvsr.user_main_peak_id_full_curve = NaN; <<<<<< ISSUE
@@ -5748,6 +6099,73 @@ fprintf('[READY !]\n');
         DTB__hvsr__user_main_peak_id_in_section(P.isshown.id,1) = NaN;
         Graphic_update_hvsr_average_curve(0);
     end
+    function select_additional_peak()
+        if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        if DTB__windows__number(P.isshown.id,1)==0; return; end
+        %
+        %
+        clc
+        [xmi,xma] = getxrange();
+        fprintf('Freq. range selected [%f][%f]\n',xmi,xma)
+        if xmi==xma
+            fprintf('Peak unsuccessful.\n')
+            return; 
+        end
+        
+        %         nf = P.ELAB_PARAMETERS{P.isshown.id,1}.WNDOWS_INFO(5);
+        df = DTB__windows__info(P.isshown.id, 4);
+        idx_shift = DTB__section__Frequency_Vector{P.isshown.id,1}(1);
+        %
+        ifmin = fix(xmi/df);% expressed on the full freq scale
+        ifmax = fix(xma/df);
+        %         df* (ifmin)
+        %         df* (ifmax)
+        %
+        %local_idx = [ifmin:ifmax] - idx_shift +1;
+        min_local_idx = ifmin - idx_shift -1;
+        max_local_idx = ifmax - idx_shift +1;
+        if min_local_idx < 1; min_local_idx =1; end
+        if max_local_idx >size(DTB__hvsr__curve{P.isshown.id,1},1)
+            max_local_idx =size(DTB__hvsr__curve{P.isshown.id,1},1);
+        end
+        local_idx = min_local_idx:max_local_idx;
+        amax = max( DTB__hvsr__curve{P.isshown.id,1}(local_idx) );
+        imax = find( DTB__hvsr__curve{P.isshown.id,1}(local_idx)== amax);
+        imax = imax(1);
+        imax = local_idx(imax);
+        valueset = [imax, (idx_shift+imax-1),  (df*(imax+idx_shift-1)),  amax];
+        %ID in section
+        %ID in full curve
+        %frequence
+        %amplitude
+        if ~isempty(DTB__hvsr__user_additional_peaks{P.isshown.id})
+            for p = 1:size(DTB__hvsr__user_additional_peaks{P.isshown.id},1)
+                if DTB__hvsr__user_additional_peaks{P.isshown.id}(p,2)==valueset(2); return; end
+            end
+        end
+        newvals =  [DTB__hvsr__user_additional_peaks{P.isshown.id} ;valueset ];
+        DTB__hvsr__user_additional_peaks{P.isshown.id} = sortrows(newvals, 2);
+        %
+        Graphic_update_hvsr_average_curve(0);
+    end
+    function discard_last_additional_peak()
+        if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        %
+        if isempty(DTB__hvsr__user_additional_peaks{P.isshown.id,1}); return; end
+        if size(DTB__hvsr__user_additional_peaks{P.isshown.id,1},1)==1
+            DTB__hvsr__user_additional_peaks{P.isshown.id,1} = [];
+            Graphic_update_hvsr_average_curve(0);
+        else
+            DTB__hvsr__user_additional_peaks{P.isshown.id,1} = DTB__hvsr__user_additional_peaks{P.isshown.id,1}(1:end-1,:);
+            Graphic_update_hvsr_average_curve(0);
+        end
+    end
+    function deselect_additional_peak()
+        if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
+        %
+        DTB__hvsr__user_additional_peaks{P.isshown.id,1} = [];
+        Graphic_update_hvsr_average_curve(0);
+    end
     function delete_curve_set(axid)
         if ~((0 < P.isshown.id) && (P.isshown.id<= size(SURVEYS,1))); return; end
         if DTB__windows__number(P.isshown.id,1)==0; return; end
@@ -5774,7 +6192,7 @@ fprintf('[READY !]\n');
         for iw = 1:Nwin
             if (DTB__windows__is_ok{P.isshown.id,1}(iw)==1)
                 switch axid
-                    case 1; ampl = DTB__section__HV_windows{P.isshown.id,1}(local_idx,iw);%  V
+                    case 1; ampl = DTB__section__HV_windows{P.isshown.id,1}(local_idx,iw);% V
                     case 2; ampl = DTB__section__EV_windows{P.isshown.id,1}(local_idx,iw);% E
                     case 3; ampl = DTB__section__NV_windows{P.isshown.id,1}(local_idx,iw);% N
                 end
@@ -6750,8 +7168,13 @@ fprintf('[READY !]\n');
             if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
                 semilogx(fpeak_auto*[1,1],[0,1.1*apeak_auto],'diamond-r','LineWidth',P.info__curve_thickness);
             end
-
-
+            if ~isempty(DTB__hvsr__user_additional_peaks{P.isshown.id,1})
+                for p = 1:size(DTB__hvsr__user_additional_peaks{P.isshown.id,1},1)
+                    addF = DTB__hvsr__user_additional_peaks{P.isshown.id,1}(p, 3);
+                    addA = DTB__hvsr__user_additional_peaks{P.isshown.id,1}(p, 4);
+                    semilogx(addF*[1,1],[0,1.1*addA],'diamond-','Color',[1,0.7,0],'LineWidth',P.info__curve_thickness);
+                end
+            end
         else
             hold(h_ax(1),'off')
             plot(h_ax(1),Fvec, HVc,'r','LineWidth',P.hvsr__curve_thickness);
@@ -6769,6 +7192,14 @@ fprintf('[READY !]\n');
             if ~isnan(DTB__hvsr__auto_main_peak_frequence(P.isshown.id,1))
                 plot(fpeak_auto*[1,1],[0,1.1*apeak_auto],'diamond-r','LineWidth',P.info__curve_thickness);
             end
+            if ~isempty(DTB__hvsr__user_additional_peaks{P.isshown.id,1})
+                for p = 1:size(DTB__hvsr__user_additional_peaks{P.isshown.id,1},1)
+                    addF = DTB__hvsr__user_additional_peaks{P.isshown.id,1}(p, 3);
+                    addA = DTB__hvsr__user_additional_peaks{P.isshown.id,1}(p, 4);
+                    plot(h_ax(1), addF*[1,1],[0,1.1*addA],'diamond-','Color',[1,0.7,0],'LineWidth',P.info__curve_thickness);
+                end
+            end
+            
         end
         %
         %title('Ave HVSR (clean)')
@@ -6858,6 +7289,7 @@ fprintf('[READY !]\n');
             ylim(h_ax(3), P.TAB_Computations.vert_axis_limits__frequence);
         end
         %
+        is_done();
         drawnow
     end
     function Graphic_update_hvsr_H_V_Compare(newfigure)%5           H/V, compare V E N        
@@ -7848,13 +8280,14 @@ fprintf('[READY !]\n');
                 if ddf >0
                     offseti = DTB__section__Frequency_Vector{n,1}(1);
                     odf = DTB__section__Frequency_Vector{n,1}(3); 
-                    ni1 = ceil( (PeakFr*(1-ddf/100))/odf ) -offseti ;%   20180719
-                    ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%   20180719
+                    ni1 = floor( (PeakFr*(1-ddf/100))/odf ) -offseti+1;%   20190330   PeakFr = (PeakId+offseti-1)*odf
+                    ni2 = ceil(  (PeakFr*(1+ddf/100))/odf ) -offseti+1;%   20190330   (PeakFr +- perturbation)/odf -offseti+1 = freq.locat   ---> check: 100*(PeakFr-(ni1+offseti-1)*odf)/PeakFr
+
                     istr = ni1; if istr<1; istr=1; end
                     istp = ni2; if istp>size(DTB__hvsr180__preferred_direction{n,1},1); istp=PeakId; end
                     %
-                    fprintf(' Frequency ids Min/Peak/Max  [%d   %d   %d] \n', ni1,  PeakId, ni2);
-                    %fprintf(' Frequency  Range[%3.2f][%3.2f]   Peak at [%3.2f]\n',ni1*odf,ni2*odf, PeakFr);
+                    %fprintf(' Frequency ids Min/Peak/Max  [%d   %d   %d] \n', ni1,  PeakId, ni2);
+                    fprintf(' Frequency  (-)[%3.2f]  Peak[%3.2f]   (+)[%3.2f]   \n',(ni1+offseti-1)*odf, PeakFr,(ni2+offseti-1)*odf);
                     %
                     ids =  istr:istp;
                     directs = DTB__hvsr180__preferred_direction{n,1}(ids,1);
@@ -8127,6 +8560,7 @@ fprintf('[READY !]\n');
         end
         is_done();
     end
+    %
     function Graphics_plot_2d_profile(newfigure)
         is_drawing();
         quantity = P.Flags.View_2D_current_submode;
@@ -8145,7 +8579,7 @@ fprintf('[READY !]\n');
             return;
         end
         %   
-	set(h_fig,'CurrentAxes',h_ax);
+        set(h_fig,'CurrentAxes',h_ax);
         %set(h_ax,'Visible','off');
         %hold(h_ax,'off')
         %cla(h_ax)
@@ -8213,6 +8647,22 @@ fprintf('[READY !]\n');
                         end
                     end
                     str='N/V';
+                case 4 % Confidence
+                    for rr = 1:Nhv
+                        cc = P.profile_ids{P.profile.id,1}(rr,1);% Id of hvsr curve involved in profile
+                        if DTB__status(cc,1) ~= 2
+                            % old
+                            df = DTB__section__Frequency_Vector{cc,1}(3);
+                            Fold = df*(  (DTB__section__Frequency_Vector{cc,1}(1)-1) : (DTB__section__Frequency_Vector{cc,1}(2)-1) );
+                            Cold = DTB__hvsr__confidence95{cc,1};
+                            % new
+                            Cnew = spline(Fold,Cold, Fnew);
+                            Profile_data(:,rr) = Cnew;
+                        else
+                            Delete_columns(rr)=1;
+                        end
+                    end
+                    str='Confidence 95%';
             end
             %% Normalization
             switch P.profile.normalization_strategy
@@ -8252,6 +8702,9 @@ fprintf('[READY !]\n');
             %%
             %
             imagenorm_profile(Profile_data,  rr, zvec, P.profile.N_X_points, P.profile.smoothing_strategy, P.profile.smoothing_radius);
+            temporary_profile{1,1} = Profile_data;
+            temporary_profile{1,2} = rr;
+            temporary_profile{1,3} = zvec;
             set(gca,'yscale','log');
             %
             axis(h_ax,'xy')
@@ -8368,12 +8821,13 @@ fprintf('[READY !]\n');
                         dd = dd+1;
                         active_station_ids(dd,1) =d;
                         %active_station_bools(d,1)=1;
-                        surface_locations(d,1) = SURVEYS{d,1}(1);
-                        surface_locations(d,2) = SURVEYS{d,1}(2);
+                        surface_locations(d,1) = SURVEYS{d,1}(1);%#ok
+                        surface_locations(d,2) = SURVEYS{d,1}(2);%#ok
                         if ~isnan(DTB__hvsr__user_main_peak_amplitude(d,1))
-                            surface_locations(d,3) = 1/DTB__hvsr__user_main_peak_frequence(d,1);% user selection is always preferred
+                            surface_locations(d,3) = 1/DTB__hvsr__user_main_peak_frequence(d,1);%#ok 
+                            % user selection is always preferred
                         else
-                            surface_locations(d,3) = 1/DTB__hvsr__auto_main_peak_frequence(d,1);
+                            surface_locations(d,3) = 1/DTB__hvsr__auto_main_peak_frequence(d,1);%#ok
                         end                
                     end
                 end
@@ -8424,7 +8878,7 @@ fprintf('[READY !]\n');
                 %% mode 2: Z=frequency, XY=direction associate to main peak
                 %% embedded surface
                 DirectionalPeakValues = cell(Ndata,1);
-                MaindirectionId = zeros(Ndata,1);
+                MaindirectionId = zeros(Ndata,1);%#ok
                 Grads = zeros(Ndata,1);
                 processed_ids = zeros(Ndata,1);% id's of locations for which processing was fully performed               
                 pd = 0;% count processed locations
@@ -8443,7 +8897,7 @@ fprintf('[READY !]\n');
                             Yscatt(d) = SURVEYS{n,1}(2);
                             active_station_ids(d,1)=n;
                             %surface_locations(d,1) = SURVEYS{n,1}(1);
-                           %surface_locations(d,2) = SURVEYS{n,1}(2);
+                            %surface_locations(d,2) = SURVEYS{n,1}(2);
                             %
                             if ~isnan(DTB__hvsr__user_main_peak_amplitude(n,1))
                                 PeakId = DTB__hvsr__user_main_peak_id_in_section(n,1);
@@ -8477,8 +8931,9 @@ fprintf('[READY !]\n');
                             if ddf >0
                                 offseti = DTB__section__Frequency_Vector{n,1}(1);
                                 odf = DTB__section__Frequency_Vector{n,1}(3); 
-                                ni1 = ceil( (PeakFr*(1-ddf/100))/odf ) -offseti ;%   20180719
-                                ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%   20180719
+                                ni1 = floor( (PeakFr*(1-ddf/100))/odf ) -offseti+1;%   20190330   PeakFr = (PeakId+offseti-1)*odf
+                                ni2 = ceil(  (PeakFr*(1+ddf/100))/odf ) -offseti+1;%   20190330   (PeakFr +- perturbation)/odf -offseti+1 = freq.locat   ---> check: 100*(PeakFr-(ni1+offseti-1)*odf)/PeakFr
+
                                 istr = ni1; if istr<1; istr=1; end
                                 istp = ni2; if istp>size(DTB__hvsr180__preferred_direction{n,1},1); istp=PeakId; end
                                 %
@@ -8560,8 +9015,8 @@ fprintf('[READY !]\n');
                             df_yproj_mi(d) = Ami*df_yproj(1);
                             df_yproj_me(d) = Ame*df_yproj(2);
                             df_yproj_ma(d) = Ama*df_yproj(3);
-                            Grads_span(d,1) = mim;
-                            Grads_span(d,2) = mam;
+                            Grads_span(d,1) = mim;%#ok
+                            Grads_span(d,2) = mam;%#ok
                             %
                             fprintf(' Angles:  Min[%3.2f]    Peak[%3.2f]    Max[%3.2f]\n',Grads_span(d,1), Grads(d), Grads_span(d,2));
                         end
@@ -9321,7 +9776,6 @@ fprintf('[READY !]\n');
         set(ISBUSY6,'BackgroundColor', bgc, 'String', 'Ready');
         drawnow
     end
-
 %% DATA ELABORATION
 %%    preliminars
     function check_for_data_uniformity()
@@ -10693,43 +11147,73 @@ fprintf('[READY !]\n');
             end
             %
             %% save on file
-            fnameF0 = strcat(folder_name,'/x_y_f0.txt');
+            %% ID_x_y_additional_peaks.txt'
+            fnameFmore = strcat(folder_name,'/ID_x_y_additional_peaks.txt');
+            fid = fopen(fnameFmore,'w');
+            fprintf(fid,'# %s, %s\n',P.appname,P.appversion);
+            fprintf(fid,'#\n');
+            fprintf(fid,'# Additional peaks highlighted by the user (i.e. besides the fundamental one),\n');
+            fprintf(fid,'# at different locations\n');
+            fprintf(fid,'#\n');
+            fprintf(fid,'# ========= DATA COLUMNS LEGEND ==========\n');
+            fprintf(fid,'# [File ID][X/East][Y/North][Frequecy-1,Amplitude1, Frequecy-2,Amplitude2, ... As many columns as the highlighted peaks] \n');
+            fprintf(fid,'#\n');
+            fprintf(fid,'# Note: To make the list of additional peaks easily readable in table form, a fixed number of columns is\n');
+            fprintf(fid,'#        created using as a reference the location with the highest number of additional peaks.\n');
+            fprintf(fid,'#        For those location possessing a smaller number of additional peaks the dummy value "-1" is introduced.\n');
+            fprintf(fid,'#        Peaks are ordered in ascending frequency order.\n');
+            fprintf(fid,'#\n');
+            fprintf(fid,'# Data_Begins_After_this_line\n');
+            % get the number of additional peaks
+            n_add_peaks = 0;
+            for d = 1:Ndata
+                if size(DTB__hvsr__user_additional_peaks{d,1},1)>n_add_peaks; n_add_peaks=size(DTB__hvsr__user_additional_peaks{d,1},1); end
+            end
+            if  n_add_peaks>0
+                for d = 1:Ndata
+                    F_list = -ones(1, n_add_peaks);
+                    A_list = -ones(1, n_add_peaks);
+                    if ~isempty(DTB__hvsr__user_additional_peaks{d,1})
+                        for d2 = 1:size(DTB__hvsr__user_additional_peaks{d,1},1)
+                            F_list(d2) = DTB__hvsr__user_additional_peaks{d,1}(d2, 3);
+                            A_list(d2) = DTB__hvsr__user_additional_peaks{d,1}(d2, 4);
+                        end
+                    end
+                    fprintf(fid,'%d %f %f ', d, XY(d,1), XY(d,2));
+                    for d2 = 1:n_add_peaks
+                        if d2<n_add_peaks
+                            fprintf(fid,'%f %f ',  F_list(d2), A_list(d2) );
+                        else
+                            fprintf(fid,'%f %f',  F_list(d2), A_list(d2) );
+                        end
+                    end
+                    fprintf(fid,'\n');
+                end
+            else
+                fprintf('No additioal peaks were selected by the user\n')
+            end
+            fclose(fid);
+            fprintf('[additional peaks saved]\n')
+            %% ID_x_y_f0_A0.txt'
+            fnameF0 = strcat(folder_name,'/ID_x_y_f0_A0.txt');
             fid = fopen(fnameF0,'w');
             fprintf(fid,'# %s, %s\n',P.appname,P.appversion);
             fprintf(fid,'#\n');
             fprintf(fid,'# Frequency of the Main Peak at different locations.\n');
             fprintf(fid,'#\n');
             fprintf(fid,'# ========= DATA COLUMNS LEGEND ==========\n');
-            fprintf(fid,'# [X/East][Y/North][Main Peak frequence] \n');
+            fprintf(fid,'# [data ID][X/East][Y/North][Main Peak frequence][Main Peak Amplitude] \n');
             fprintf(fid,'#\n');
             fprintf(fid,'# Note: when building this file, curve peaks selected by the user\n');
             fprintf(fid,'#       are preferred over the automatic choice\n');
             fprintf(fid,'#\n');
             fprintf(fid,'# Data_Begins_After_this_line\n');
             for rr = 1:Ndata
-                fprintf(fid,'%f %f %f\n', XY(rr,1), XY(rr,2), F0(rr));
+                fprintf(fid,'%d %f %f %3.2f %3.2f\n',rr, XY(rr,1), XY(rr,2), F0(rr), A0(rr));
             end
             fclose(fid);
-            fprintf('[X-Y-Fundamental freq., saved]\n')
+            fprintf('[ID-X-Y-Fundamental freq.-Amplitude (at the fundamental freq.), saved]\n')
             %
-            fnameA0 = strcat(folder_name,'/x_y_A0.txt');
-            fid = fopen(fnameA0,'w');
-            fprintf(fid,'# %s, %s\n',P.appname,P.appversion);
-            fprintf(fid,'#\n');
-            fprintf(fid,'# Amplitude of the Main Peak at different locations.\n');
-            fprintf(fid,'#\n');
-            fprintf(fid,'# ========= DATA COLUMNS LEGEND ==========\n');
-            fprintf(fid,'# [X/East][Y/North][Amplitude at the Main Peak] \n');
-            fprintf(fid,'#\n');
-            fprintf(fid,'# Note: when building this file, curve peaks selected by the user\n');
-            fprintf(fid,'#       are preferred over the automatic choice\n');
-            fprintf(fid,'#\n');
-            fprintf(fid,'# Data_Begins_After_this_line\n');
-            for rr = 1:Ndata
-                fprintf(fid,'%f %f %f\n', XY(rr,1), XY(rr,2), A0(rr));
-            end
-            fclose(fid);
-            fprintf('[X-Y-Amplitude (at the fundamental freq.), saved]\n')
             %
             %
             %% get directions (code pasted from the plot function)
@@ -10765,21 +11249,21 @@ fprintf('[READY !]\n');
                 % around main peak (to be sure that not much variability is present)
                 offseti = DTB__section__Frequency_Vector{d,1}(1);
                 odf = DTB__section__Frequency_Vector{d,1}(3); 
-                ni1 = ceil( (PeakFr*(1-ddf/100))/odf )   -offseti ;%               20180719
-                ni2 = fix(  (PeakFr*(1+ddf/100))/odf ) -offseti ;%               20180719
+                ni1 = floor( (PeakFr*(1-ddf/100))/odf ) -offseti+1;%   20190330   PeakFr = (PeakId+offseti-1)*odf
+                ni2 = ceil(  (PeakFr*(1+ddf/100))/odf ) -offseti+1;%   20190330   (PeakFr +- perturbation)/odf -offseti+1 = freq.locat   ---> check: 100*(PeakFr-(ni1+offseti-1)*odf)/PeakFr
+
                 istr = ni1; if istr<1; istr=1; end
                 istp = ni2; if istp>size(DTB__hvsr180__preferred_direction{d,1},1); istp=PeakId; end
                 %
-                fprintf('[%d]  angle[%d]   Range[%3.2f][%3.2f]    with peak at:[%3.2f]\n',d,Grads(d) ,ni1*odf,ni2*odf, F0(d));
+                fprintf(' Frequency  (-)[%3.2f]  Peak[%3.2f]   (+)[%3.2f]   \n',(ni1+offseti-1)*odf, PeakFr,(ni2+offseti-1)*odf);
                 ids =  istr:istp;
                 directs = DTB__hvsr180__preferred_direction{d,1}(ids,1);
                 Df_Grads{d,1} = angles(directs);
                 Df_Ampl{d,1}  = DTB__hvsr180__preferred_direction{d,1}(ids,2);
-                Df_info{d,1}  = [PeakFr, ni1*odf,ni2*odf];
-
+                Df_info{d,1}  = [PeakFr,   (ni1+offseti-1)*odf,   (ni2+offseti-1)*odf];
             end
             Rads = Grads*pi/180;%   rr=gg*pi/180
-            
+            %
             %% directions around peak (min, max, average)
             df_angle_mi = zeros(Ndata,1);
             df_angle_ma = zeros(Ndata,1);
@@ -10808,11 +11292,11 @@ fprintf('[READY !]\n');
                 df_yproj_ma(d) = Ama*df_yproj(2);
 
                 df_angle_mi(d) = mim;
-                df_angle_ma(d) = mam;   
+                df_angle_ma(d) = mam;
             end
             %
             %% main direction (write file)
-            fnameDirDf = strcat(folder_name,'/x_y_direction_in_a_frequence_interval.txt');
+            fnameDirDf = strcat(folder_name,'/ID_x_y_direction_in_a_frequence_interval.txt');
             fid = fopen(fnameDirDf,'w');
             fprintf(fid,'# %s, %s\n',P.appname,P.appversion);
             fprintf(fid,'#\n');
@@ -10850,19 +11334,20 @@ fprintf('[READY !]\n');
             fprintf(fid,'#       on tab "2D Views".\n');
             fprintf(fid,'#\n');
             fprintf(fid,'# ========= DATA COLUMNS LEGEND ==========\n');
-            fprintf(fid,'# Column  1: Location: X/East\n');
-            fprintf(fid,'# Column  2: Location Y/North\n');
+            fprintf(fid,'# Column  1: ID\n');
+            fprintf(fid,'# Column  2: Location: X/East\n');
+            fprintf(fid,'# Column  3: Location Y/North\n');
 
-            fprintf(fid,'# Column  3: Peak frequence\n');
-            fprintf(fid,'# Column  4: Minimum frequence considered\n');
-            fprintf(fid,'# Column  5: Maximum frequence considered\n');
+            fprintf(fid,'# Column  4: Peak frequence\n');
+            fprintf(fid,'# Column  5: Minimum frequence considered\n');
+            fprintf(fid,'# Column  6: Maximum frequence considered\n');
 
-            fprintf(fid,'# Column  6: Minimum angle\n');
-            fprintf(fid,'# Column  7: Direction at main peak (minimum angle), x-component\n');
-            fprintf(fid,'# Column  8: Direction at main peak (minimum angle), y-component\n');
-            fprintf(fid,'# Column  9: Maximum angle\n');
-            fprintf(fid,'# Column 10: Direction at main peak (maximum angle), x-component\n');
-            fprintf(fid,'# Column 11: Direction at main peak (maximum angle), y-component\n');
+            fprintf(fid,'# Column  7: Minimum angle\n');
+            fprintf(fid,'# Column  8: Direction at main peak (minimum angle), x-component\n');
+            fprintf(fid,'# Column  9: Direction at main peak (minimum angle), y-component\n');
+            fprintf(fid,'# Column 10: Maximum angle\n');
+            fprintf(fid,'# Column 11: Direction at main peak (maximum angle), x-component\n');
+            fprintf(fid,'# Column 12: Direction at main peak (maximum angle), y-component\n');
             fprintf(fid,'#\n');
             fprintf(fid,'# Note: when building this file, curve peaks selected by the user\n');
             fprintf(fid,'#       are preferred over the automatic choice\n');
@@ -10876,14 +11361,13 @@ fprintf('[READY !]\n');
                 df_angle_ma2 = df_angle_ma;
             end
             for rr = 1:Ndata
-                fprintf(fid,'%f %f %3.2f %3.2f %3.2f %3.1f %f %f %3.1f %f %f\n', XY(rr,1), XY(rr,2), ...
-                    Df_info{rr}, ...
+                fprintf(fid,'%d %f %f %3.2f %3.2f %3.2f %3.1f %f %f %3.1f %f %f\n', rr, XY(rr,1), XY(rr,2), ...
+                    Df_info{rr,1}, ...
                     df_angle_mi2(rr), df_xproj_mi(rr), df_yproj_mi(rr), ...
                     df_angle_ma2(rr), df_xproj_ma(rr), df_yproj_ma(rr));
             end
             fclose(fid);
-            fprintf('[X-Y - min e max angular direction in a buffer around the main peak, saved]\n')
-
+            fprintf('[ID-X-Y - min e max angular direction in a buffer around the main peak, saved]\n')
             %% main direction (at peak)
             %arrowmaxlength = scalearrows*max([ ,  ]);
             %   \  |y /(N)
@@ -10896,7 +11380,7 @@ fprintf('[READY !]\n');
                 yproj(d) = Ampl(d)*yproj(d);
             end
             %% main direction (write file)
-            fnameDir0 = strcat(folder_name,'/x_y_direction_at_main_peak.txt');
+            fnameDir0 = strcat(folder_name,'/ID_x_y_direction_at_main_peak.txt');
             fid = fopen(fnameDir0,'w');
             fprintf(fid,'# %s, %s\n',P.appname,P.appversion);
             fprintf(fid,'#\n');
@@ -10905,10 +11389,11 @@ fprintf('[READY !]\n');
             fprintf(fid,'# is higher with respect to the peak amplitude averaged on all directions\n');
             fprintf(fid,'#\n');
             fprintf(fid,'# ========= DATA COLUMNS LEGEND ==========\n');
-            fprintf(fid,'# Column 1: Location: X/East\n');
-            fprintf(fid,'# Column 2: Location Y/North\n');
-            fprintf(fid,'# Column 3: Direction at main peak x-component\n');
-            fprintf(fid,'# Column 4: Direction at main peak y-component\n');
+            fprintf(fid,'# Column 1: ID\n');
+            fprintf(fid,'# Column 2: Location: X/East\n');
+            fprintf(fid,'# Column 3: Location Y/North\n');
+            fprintf(fid,'# Column 4: Direction at main peak x-component\n');
+            fprintf(fid,'# Column 5: Direction at main peak y-component\n');
             fprintf(fid,'#\n');
             fprintf(fid,'#       |y(N)    \n');
             fprintf(fid,'#       |        \n');
@@ -10919,13 +11404,12 @@ fprintf('[READY !]\n');
             fprintf(fid,'#\n');
             fprintf(fid,'# Data_Begins_After_this_line\n');
             for rr = 1:Ndata
-                fprintf(fid,'%f %f %f %f\n', XY(rr,1), XY(rr,2), xproj(rr), yproj(rr));
+                fprintf(fid,'%d %f %f %f %f\n', rr, XY(rr,1), XY(rr,2), xproj(rr), yproj(rr));
             end
             fclose(fid);
-            fprintf('[X-Y - direction associated to the peak, saved]\n')
-            
+            fprintf('[X-Y - direction associated to the peak, saved]\n')            
             %% angles only
-            fnameDir0 = strcat(folder_name,'/x_y_angles_around_main_peak.txt');
+            fnameDir0 = strcat(folder_name,'/ID_x_y_angles_around_main_peak.txt');
             fid = fopen(fnameDir0,'w');
             fprintf(fid,'# %s, %s\n',P.appname,P.appversion);
             fprintf(fid,'#\n');
@@ -10962,12 +11446,12 @@ fprintf('[READY !]\n');
             fprintf(fid,'# Note: when building this file, curve peaks selected by the user\n');
             fprintf(fid,'#       are preferred over the automatic choice\n');
             fprintf(fid,'#\n');
-
-            fprintf(fid,'# Column 1: Angle (minimum)\n');
-            fprintf(fid,'# Column 2: Angle (at peak)\n');
-            fprintf(fid,'# Column 3: Angle (maximum)\n');
-            fprintf(fid,'# Column 4: Magnitude rappresenting neanignness\n');
-            fprintf(fid,'# Column 5: Original File name\n');
+            fprintf(fid,'# Column 1: ID\n');
+            fprintf(fid,'# Column 2: Angle (minimum)\n');
+            fprintf(fid,'# Column 3: Angle (at peak)\n');
+            fprintf(fid,'# Column 4: Angle (maximum)\n');
+            fprintf(fid,'# Column 5: Magnitude rappresenting neanignness\n');
+            fprintf(fid,'# Column 6: Original File name\n');
             fprintf(fid,'#\n');
             fprintf(fid,'#\n');
             fprintf(fid,'# Data_Begins_After_this_line\n');
@@ -10976,7 +11460,7 @@ fprintf('[READY !]\n');
                     df_angle_mi2 = -df_angle_mi+90;
                     df_angle_ma2 = -df_angle_ma+90;
                     for rr = 1:Ndata
-                        fprintf(fid,'%3.1f %3.1f %3.1f %f     %s\n',df_angle_ma2(rr), Grad2(rr), df_angle_mi2(rr), Ampl(rr), SURVEYS{rr,2}  );  
+                        fprintf(fid,'%d %3.1f %3.1f %3.1f %f     %s\n', rr, df_angle_ma2(rr), Grad2(rr), df_angle_mi2(rr), Ampl(rr), SURVEYS{rr,2}  );  
                         %fprintf('Angles %3.1f   %3.1f   %3.1f   %f     %s\n', df_angle_ma2(rr), Grad2(rr), df_angle_mi2(rr), Ampl(rr), SURVEYS{rr,2}  );  
                     end
             else
@@ -10984,7 +11468,7 @@ fprintf('[READY !]\n');
                     df_angle_mi2 = df_angle_mi;
                     df_angle_ma2 = df_angle_ma;
                     for rr = 1:Ndata
-                        fprintf(fid,'%3.1f %3.1f %3.1f %f     %s\n',df_angle_mi2(rr), Grad2(rr), df_angle_ma2(rr), Ampl(rr), SURVEYS{rr,2}  );  
+                        fprintf(fid,'%d %3.1f %3.1f %3.1f %f     %s\n', rr, df_angle_mi2(rr), Grad2(rr), df_angle_ma2(rr), Ampl(rr), SURVEYS{rr,2}  );  
                         %fprintf('Angles %3.1f   %3.1f   %3.1f   %f     %s\n', df_angle_mi2(rr), Grad2(rr), df_angle_ma2(rr), Ampl(rr), SURVEYS{rr,2}  );  
                     end
             end
@@ -10992,8 +11476,6 @@ fprintf('[READY !]\n');
             fprintf('[Angles around the peak, saved]\n')
         
         end
-        
-        
     end
 %  _________________________________________________________________________
 end% end gui

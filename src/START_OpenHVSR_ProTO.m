@@ -33,7 +33,13 @@ gui_3D();
 %       * auto-creation of the "history.m" file
 %       * [2019-01-13] bugfix, overlap of station locations once projected on the profile 
 %       * [2019-01-30] bugfix, solved the issue with save elaboration function for large projects     
-
+%
+%       * [2019-03-30] new features:
+%          >> Multiple additional peaks (i.e. besides F0) can now be selected and saved in a txt file
+%          >> A profile image (Tab 2D views) can be saved as *.mat file      
+%          >> A profile can be extracted from a bigger progect and saved as stand-alone project
+%          >> A profile of "Confidence 95%" can now be generated
+%
 
 
 
