@@ -4289,10 +4289,9 @@ fprintf('[READY !]\n');
         %
         prompt = {'Select the ID of the farthest station','Custom name'};
         def = {'0','none'};
-        % inputdlg(prompt,title,dims,definput)
         answer = inputdlg(prompt,'info request',[1 35],def);
         if(isempty(answer)); return; end
-        %r_distance_from_profile = str2double(answer{1});
+        %
         id_farhest = str2double(answer{1});
         profile_name = answer{2};
         if (0<id_farhest) && (id_farhest<=Np)
@@ -5074,29 +5073,52 @@ fprintf('[READY !]\n');
 %% TAB 5 ====================== 3D Views
     function CB_TAB_create_reference_scales(~,~,~)
         if ~isempty(SURVEYS)
-            %% Generate a reference Frequence scale
+            %% Generate a reference Frequence scale (range that exixt for all HVSRs)
             %fprintf('call to: CB_TAB_create_reference_scales\n')
             %fprintf('            will prepare common reference scales for 3D-view\n')
             % each dataset may have a different frequency sampling and band
             Ndat = size(SURVEYS,1);
             %
-            tempfmin = 1e30;
+            tempfmin = 0;
+            for s=1:Ndat% search first valid f-min
+                temp=DTB__section__Min_Freq(s,1);
+                if ~isempty(temp)
+                    tempfmin = temp;
+                    break;
+                end
+            end
             for s=1:Ndat%investigate all surveys
                 temp=DTB__section__Min_Freq(s,1);
                 if ~isempty(temp)
-                    if temp<tempfmin
+                    if temp>tempfmin
                         tempfmin = temp;
                     end
                 end
             end
-            tempfmax = -1e30;
+            tempfmax = 0;
+            for s=1:Ndat% search first valid f-max
+                temp=DTB__section__Max_Freq(s,1);
+                if ~isempty(temp)
+                    tempfmax = temp;
+                    break;
+                end
+            end
             for s=1:Ndat%investigate all surveys
                 temp=DTB__section__Max_Freq(s,1);
                 if ~isempty(temp)
-                    if temp>tempfmax
+                    if temp<tempfmax
                         tempfmax = temp;
                     end
                 end
+            end
+            if tempfmin>=tempfmax
+                fprintf('ERROR: no common frequency range faund for the measurements\n')
+                fprintf('       disabling figures based on interpolation\n')
+                fprintf('       pause. (hit any key to continue)\n')
+                pause
+                FLAG__enable_interpolated_figures = 0;
+            else
+                FLAG__enable_interpolated_figures = 1;
             end
             %
             %
