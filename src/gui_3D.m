@@ -46,6 +46,7 @@ Pfiles_SET_ONOFF_FEAT%          extra features
 Pfiles_IFLAGS%                  flags deciding components behavior
 DEFAULT_VALUES%                default data-processing values
 Pfiles__INTERNAL_VARIABLES%     contains private variables
+P.appversion = 'V2.1.3';%%      on 190406
 %
 %
 %% Get USER preferences
